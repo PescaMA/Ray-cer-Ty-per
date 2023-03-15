@@ -1,0 +1,7 @@
+# depslib dependency file v1.0
+1678911355 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\ray-cer\main.cpp
+	<iostream>
+	<fstream>
+	<raylib.h>
+	<map>
+
