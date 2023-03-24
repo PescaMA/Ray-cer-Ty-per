@@ -90,13 +90,17 @@ namespace ExtraRaylib
         {
             if(directColor == nullptr)
             {
-                std::cout << "No color set for RGB!\n";
-                exit(1);
+                directColor = new Color(0,0,0,255);
             }
             (*directColor) = {static_cast<unsigned char>(255 * Sr.prc),
                     static_cast<unsigned char>(255 * Sg.prc),
                     static_cast<unsigned char>(255 * Sb.prc),255};
         }
+    };
+    struct ScreenWrapper
+    {
+        virtual void run(){}
+        virtual void draw(){}
     };
 }
 namespace RayCerTyPer
@@ -167,6 +171,9 @@ namespace RayCerTyPer
         void draw()
         {
             DrawRectangle(Xstart,Ystart,width,nrOfRoads*Ylength,GRAY);
+            int sz = cars.size();
+            for(int i=0; i<sz; i++)
+                cars[i].draw();
         }
     };
     class Loader
@@ -211,34 +218,39 @@ namespace RayCerTyPer
             CloseWindow();
         }
     };
-    class MainLoop
+    namespace ScreenManaging
     {
-        enum Screens
+        class ScreenStuff
         {
-            _NormalGame,
-            _ColorPicker
-        }doing;
-        /// for obv reasons namespaces are illegal.(in classes)
-        namespace NormalGame
+            public:
+            enum screens{Sgame,SRGBpick} now = Sgame;
+            void setScreen(screens screen)
+            {
+                now = screen;
+            }
+            ExtraRaylib::ScreenWrapper* getScreen();
+        }currentScreen;
+        class NormalGame : public ExtraRaylib::ScreenWrapper
         {
-            Road roads;
+            public:
+            Road roads = Road(1);
             void run()
             {
                 roads.run();
                 int nr = roads.getCarRightClicked();
-                if(nr >= 0)
+                if(nr == 0) /// we can only custimize the first car (our own)
                 {
-                    doing = _NormalGame;
-                    colorPicker->setColor(roads.cars[nr].color);
+                    currentScreen.setScreen(ScreenStuff::screens::SRGBpick);
                 }
             }
             void draw()
             {
                 roads.draw();
             }
-        }
-        namespace ColorPicker
+        } game;
+        class ColorPicker : public ExtraRaylib::ScreenWrapper
         {
+            public:
             ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(30,200,60,60);
             void setColor(Color& color)
             {
@@ -252,35 +264,41 @@ namespace RayCerTyPer
             {
                 RGBcolor.draw();
             }
-        }
-
-    public:
-        static void run()
+        } colorPicker;
+        ExtraRaylib::ScreenWrapper* ScreenStuff::getScreen()
         {
-
-            while(!WindowShouldClose())
-            {
-                settings["ScreenWidth"] = GetScreenWidth();
-                settings["ScreenHeight"] = GetScreenHeight();
-                ScreenInfo = {0,0,(float)GetScreenWidth(),(float)GetScreenHeight()};
-                if(doing == _NormalGame) NormalGame::run();
-                if(doing == _ColorPicker) ColorPicker::run();
-
-                ///logic soon to be crafted from the finest materials(raylib + C++) but by a terrible programmer(me)
-                BeginDrawing();
-                    ClearBackground(RAYWHITE);
-                    if(doing == _NormalGame) NormalGame::run();
-                    if(doing == _ColorPicker) ColorPicker::run();
-                EndDrawing();
-            }
+            ExtraRaylib::ScreenWrapper *screen;
+            if(now == Sgame) screen = &game;
+            if(now == SRGBpick) screen = &colorPicker;
+            return screen;
         }
+        class MainLoop
+        {
+        public:
+            static void run()
+            {
+                currentScreen.setScreen(ScreenStuff::screens::Sgame);
+                while(!WindowShouldClose())
+                {
+                    settings["ScreenWidth"] = GetScreenWidth();
+                    settings["ScreenHeight"] = GetScreenHeight();
+                    ScreenInfo = {0,0,(float)GetScreenWidth(),(float)GetScreenHeight()};
+                    currentScreen.getScreen()->run();
+                    ///logic soon to be crafted from the finest materials(raylib + C++) but by a terrible programmer(me)
+                    BeginDrawing();
+                        ClearBackground(RAYWHITE);
+                        currentScreen.getScreen()->draw();
+                    EndDrawing();
+                }
+            }
 
-    };
+        };
+    }
 }
 int main()
 {
     RayCerTyPer::Loader loader;
     loader.load();
-    RayCerTyPer::MainLoop::run();
+    RayCerTyPer::ScreenManaging::MainLoop::run();
     loader.unload();
 }

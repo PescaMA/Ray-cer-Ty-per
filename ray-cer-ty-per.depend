@@ -6,9 +6,10 @@
 	<raylib.h>
 	<map>
 
-1678976387 source:/home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/main.cpp
+1679645802 source:/home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/main.cpp
 	<iostream>
 	<fstream>
+	<vector>
 	<raylib.h>
 	<map>
 
