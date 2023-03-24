@@ -59,7 +59,8 @@ namespace ExtraRaylib
     struct Choose_RGB
     {
         int x,y,width,height;
-        Slider Sr,Sg,Sb;/// just changed diameter to radius . change here 2 future me.
+        Color *directColor = nullptr;
+        Slider Sr,Sg,Sb;
         Choose_RGB(int x,int y,int width,int H):x(x),y(y),width(width),height(H),
         Sr(x+10,(int)(y+0.25*height),width * 0.7,height * 0.1),
         Sg(x+10,(int)(y+0.50*height),width * 0.7,height * 0.1),
@@ -71,15 +72,28 @@ namespace ExtraRaylib
             Sg.draw();
             Sb.draw();
         }
+        void setColor(Color &color)
+        {
+            directColor = &color;
+            Sr.prc = (double)color.r/255;
+            Sg.prc = (double)color.g/255;
+            Sb.prc = (double)color.b/255;
+        }
         void run()
         {
             Sr.run();
             Sg.run();
             Sb.run();
+            setRGBColor();
         }
-        Color getRGBColor()
+        void setRGBColor()
         {
-            return {static_cast<unsigned char>(255 * Sr.prc),
+            if(directColor == nullptr)
+            {
+                std::cout << "No color set for RGB!\n";
+                exit(1);
+            }
+            (*directColor) = {static_cast<unsigned char>(255 * Sr.prc),
                     static_cast<unsigned char>(255 * Sg.prc),
                     static_cast<unsigned char>(255 * Sb.prc),255};
         }
@@ -92,24 +106,33 @@ namespace RayCerTyPer
     Rectangle ScreenInfo; /// used to center
     class Car
     {
-        int carPoz;
-        static int const carStart = 40;
-        static int const carEnd = 300;
-        ExtraRaylib::Choose_RGB color = ExtraRaylib::Choose_RGB(30,200,60,60);
+        static int const START = 40;
+        static int const END = 300;
+        static int const S_WIDTH = 120; /// sprite width
+        static int const S_HEIGHT = 48; /// sprite height
+
+        float xPoz = START;
+        float const y;
+
         public:
+        Color color;
         static Texture2D ASSET_STRUCTURE;
         static Texture2D ASSET_COLOR;
+        Car():y(0){}
+        Car(float y):y(y){}
         void run()
         {
-            color.run();
         }
-        void draw(int y=40)
+        bool rightClicked()
         {
-            DrawTexture(ASSET_COLOR,carStart,y,color.getRGBColor());
-            DrawTexture(ASSET_STRUCTURE,carStart,y,WHITE);
-            color.draw();
+            return CheckCollisionPointRec(GetMousePosition(),{xPoz,y,S_WIDTH,S_HEIGHT});
         }
-    }; ///statics need to be declared
+        void draw()
+        {
+            DrawTexture(ASSET_COLOR,START,y,color);
+            DrawTexture(ASSET_STRUCTURE,START,y,WHITE);
+        }
+    }; ///non const statics need to be declared
     Texture2D Car::ASSET_STRUCTURE;
     Texture2D Car::ASSET_COLOR;
     class Road
@@ -120,11 +143,26 @@ namespace RayCerTyPer
 
         int const Xstart = 40;
         int const width = 300;
-        std::vector <Car> cars;
         public:
-        Road()
+        std::vector <Car> cars;
+        Road(int nr_of_cars)
         {
-            cars.emplace_back();
+            for(int i=0;i<nr_of_cars;i++)
+                cars.emplace_back();
+        }
+        void run()
+        {
+            int sz = cars.size();
+            for(int i=0; i<sz; i++)
+                cars[i].run();
+        }
+        int getCarRightClicked()
+        {
+            int sz = cars.size();
+            for(int i=0; i<sz; i++)
+                if(cars[i].rightClicked())
+                    return i;
+            return -1;
         }
         void draw()
         {
@@ -175,32 +213,68 @@ namespace RayCerTyPer
     };
     class MainLoop
     {
+        enum Screens
+        {
+            _NormalGame,
+            _ColorPicker
+        }doing;
+        /// for obv reasons namespaces are illegal.(in classes)
+        namespace NormalGame
+        {
+            Road roads;
+            void run()
+            {
+                roads.run();
+                int nr = roads.getCarRightClicked();
+                if(nr >= 0)
+                {
+                    doing = _NormalGame;
+                    colorPicker->setColor(roads.cars[nr].color);
+                }
+            }
+            void draw()
+            {
+                roads.draw();
+            }
+        }
+        namespace ColorPicker
+        {
+            ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(30,200,60,60);
+            void setColor(Color& color)
+            {
+                RGBcolor.setColor(color);
+            }
+            void run()
+            {
+                RGBcolor.run();
+            }
+            void draw()
+            {
+                RGBcolor.draw();
+            }
+        }
+
     public:
         static void run()
         {
-            using namespace ExtraRaylib;
-            Slider test(10,10,100,10);
-            Car player;
-            Road roads;
 
             while(!WindowShouldClose())
             {
-
-                test.run();
-                player.run();
                 settings["ScreenWidth"] = GetScreenWidth();
                 settings["ScreenHeight"] = GetScreenHeight();
                 ScreenInfo = {0,0,(float)GetScreenWidth(),(float)GetScreenHeight()};
+                if(doing == _NormalGame) NormalGame::run();
+                if(doing == _ColorPicker) ColorPicker::run();
+
                 ///logic soon to be crafted from the finest materials(raylib + C++) but by a terrible programmer(me)
                 BeginDrawing();
-                ClearBackground(RAYWHITE);
-                roads.draw();
-                player.draw();
-                test.draw();
-
+                    ClearBackground(RAYWHITE);
+                    if(doing == _NormalGame) NormalGame::run();
+                    if(doing == _ColorPicker) ColorPicker::run();
                 EndDrawing();
             }
         }
+
     };
 }
 int main()
