@@ -1,10 +1,21 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <raylib.h>
-#include <map>
+#include <iostream> /// for errors
+#include <fstream>  /// for saving/loading data
+#include <raylib.h> /// for GUI
+#include <map>      /// for settings
+#include <random>   /// for randomized colors
+#include <chrono>   /// for time
 namespace ExtraRaylib
 {
+        long long getTimeMS()
+    {
+        using namespace std::chrono;
+        return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+    }
+    long long getTimeMCS()
+    {
+        using namespace std::chrono;
+        return duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
+    }
     void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
     {
         /// not entirely sure what all the parameters mean but seems to work.
@@ -89,9 +100,7 @@ namespace ExtraRaylib
         void setRGBColor()
         {
             if(directColor == nullptr)
-            {
-                directColor = new Color(0,0,0,255);
-            }
+                directColor = new Color;
             (*directColor) = {static_cast<unsigned char>(255 * Sr.prc),
                     static_cast<unsigned char>(255 * Sg.prc),
                     static_cast<unsigned char>(255 * Sb.prc),255};
@@ -110,16 +119,16 @@ namespace RayCerTyPer
     Rectangle ScreenInfo; /// used to center
     class Car
     {
+        public:
         static int const START = 40;
         static int const END = 300;
-        static int const S_WIDTH = 120; /// sprite width
-        static int const S_HEIGHT = 48; /// sprite height
+        static int const WIDTH = 120; /// sprite width
+        static int const HEIGHT = 48; /// sprite height
 
         float xPoz = START;
         float const y;
 
-        public:
-        Color color;
+        Color color = {0,222,0,255};
         static Texture2D ASSET_STRUCTURE;
         static Texture2D ASSET_COLOR;
         Car():y(0){}
@@ -129,7 +138,7 @@ namespace RayCerTyPer
         }
         bool rightClicked()
         {
-            return CheckCollisionPointRec(GetMousePosition(),{xPoz,y,S_WIDTH,S_HEIGHT});
+            return IsMouseButtonDown(1) && CheckCollisionPointRec(GetMousePosition(),{xPoz,y,WIDTH,HEIGHT});
         }
         void draw()
         {
@@ -142,7 +151,7 @@ namespace RayCerTyPer
     class Road
     {
         int const Ystart = 50;
-        int Ylength = 55;
+        int Ylength = Car::HEIGHT + 5;
         int nrOfRoads = 1;
 
         int const Xstart = 40;
@@ -151,8 +160,9 @@ namespace RayCerTyPer
         std::vector <Car> cars;
         Road(int nr_of_cars)
         {
+            nrOfRoads = nr_of_cars;
             for(int i=0;i<nr_of_cars;i++)
-                cars.emplace_back();
+                cars.emplace_back(Ystart + i*Ylength);
         }
         void run()
         {
@@ -176,14 +186,20 @@ namespace RayCerTyPer
                 cars[i].draw();
         }
     };
+
+
     class Loader
     {
         public:
         void load()
         {
+            srand(ExtraRaylib::getTimeMS()); /// setting the random seed to current time
+
             SetConfigFlags(FLAG_WINDOW_RESIZABLE);
             defaultSettings();
+            readSettings();
             InitWindow(ScreenInfo.width,ScreenInfo.height,"Ray-cer");
+            SetExitKey(0);
             Car::ASSET_STRUCTURE = LoadTexture("Images/carStructure.png");
             Car::ASSET_COLOR = LoadTexture("Images/carColor.png");
             SetTargetFPS(fps);
@@ -192,8 +208,11 @@ namespace RayCerTyPer
         {
             settings["ScreenWidth"] = 960;
             settings["ScreenHeight"] = 540;
-            ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
+            settings["PlayerR"] = 0;
+            settings["PlayerG"] = 0;
+            settings["PlayerB"] = 200;
 
+            ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
         }
         void readSettings()
         {
@@ -204,15 +223,19 @@ namespace RayCerTyPer
             double val;
             while(fin>>name>>val)
                 settings[name]=val;
+            ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
         }
         void changeSettings()
         {
             std::ofstream fout("settings.txt");
-            for(std::map<std::string,double>::iterator it;it!=settings.end();it++)
+            if(!fout)return;
+            for(std::map<std::string,double>::iterator it=settings.begin();it!=settings.end();it++)
                 fout<<it->first<<' '<<it->second<<'\n';
+
         }
         void unload()
         {
+            changeSettings();
             UnloadTexture(Car::ASSET_STRUCTURE);
             UnloadTexture(Car::ASSET_COLOR);
             CloseWindow();
@@ -220,6 +243,7 @@ namespace RayCerTyPer
     };
     namespace ScreenManaging
     {
+        Car *player;
         class ScreenStuff
         {
             public:
@@ -233,7 +257,7 @@ namespace RayCerTyPer
         class NormalGame : public ExtraRaylib::ScreenWrapper
         {
             public:
-            Road roads = Road(1);
+            Road roads = Road(2);
             void run()
             {
                 roads.run();
@@ -259,9 +283,13 @@ namespace RayCerTyPer
             void run()
             {
                 RGBcolor.run();
+                if(IsKeyDown(KEY_ESCAPE))
+                    currentScreen.setScreen(ScreenStuff::screens::Sgame);
+
             }
             void draw()
             {
+                player->draw();
                 RGBcolor.draw();
             }
         } colorPicker;
@@ -278,20 +306,38 @@ namespace RayCerTyPer
             static void run()
             {
                 currentScreen.setScreen(ScreenStuff::screens::Sgame);
+                player = &game.roads.cars[0];
+                loadSettings();
+                colorPicker.setColor(player->color);
                 while(!WindowShouldClose())
                 {
-                    settings["ScreenWidth"] = GetScreenWidth();
-                    settings["ScreenHeight"] = GetScreenHeight();
-                    ScreenInfo = {0,0,(float)GetScreenWidth(),(float)GetScreenHeight()};
+                    updateScreenVariables();
                     currentScreen.getScreen()->run();
-                    ///logic soon to be crafted from the finest materials(raylib + C++) but by a terrible programmer(me)
                     BeginDrawing();
                         ClearBackground(RAYWHITE);
                         currentScreen.getScreen()->draw();
                     EndDrawing();
                 }
+                saveSettings();
             }
-
+            static void updateScreenVariables()
+            {
+                settings["ScreenWidth"] = GetScreenWidth();
+                settings["ScreenHeight"] = GetScreenHeight();
+                ScreenInfo = {0,0,(float)GetScreenWidth(),(float)GetScreenHeight()};
+            }
+            static void saveSettings()
+            {
+                settings["PlayerR"] = player->color.r;
+                settings["PlayerG"] = player->color.g;
+                settings["PlayerB"] = player->color.b;
+            }
+            static void loadSettings()
+            {
+                 player->color.r = settings["PlayerR"];
+                 player->color.g = settings["PlayerG"];
+                 player->color.b = settings["PlayerB"];
+            }
         };
     }
 }
