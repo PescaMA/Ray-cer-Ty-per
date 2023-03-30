@@ -29,6 +29,50 @@ namespace ExtraRaylib
         }
         return (currentTime - timeMap[key] >= durationMS);
     }
+    class boxText
+    {
+        protected:
+        std::string text;
+        std::vector<std::string> sepText;
+        Rectangle rect;
+        int font_size;
+        int const MAX_LINES;
+        int sepTextSize = 0;
+        public:
+        boxText():MAX_LINES(-1){}
+        boxText(std::string text, Rectangle box, int max_nr_lines,int font_size)
+        :text(text), rect(box), font_size(std::max(font_size,8)), MAX_LINES(max_nr_lines){
+            rect.height = MAX_LINES * font_size;
+        }
+        void setSepText()
+        {
+            /// probably overcomplicated
+            int sz = text.size();
+            if(!sz) return;
+            int pos = 0;
+            int nr = 0;
+            sepText.emplace_back();
+            while(pos < sz)
+            {
+                int extra = 0;
+                for(extra = 0;extra + pos < sz && text[extra+pos]!=' ';extra++);
+                std::string addedWord = text.substr(pos,extra+1);
+                if(MeasureText((sepText[nr]+addedWord).c_str(),text_size) > rect.width)
+                    nr++,sepText.emplace_back();
+                sepText[nr]+=addedWord;
+                pos += extra + 1;
+            }
+            sepTextSize = sepText.size();
+        }
+        void draw(int linePos = 0)
+        {
+            if(sepTextSize == 0)
+                setSepText();
+            DrawRectangleRec(rect,WHITE);
+            for(int i=0;i<MAX_LINES && i+linePos<sepTextSize;i++)
+                DrawText(sepText[i+linePos].c_str(),rect.x,rect.y+i*font_size,font_size,BLACK);
+        }
+    };
     void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
     {
         /// not entirely sure what all the parameters mean but seems to work.
@@ -199,7 +243,37 @@ namespace RayCerTyPer
                 cars[i].draw();
         }
     };
-
+    class FeedbackText : public ExtraRaylib::boxText
+    {
+        int linePos = 0;
+        int charPos = 0;
+        int greenEnd = -1,redEnd = -1;
+        std::string gr,re,bl;
+        FeedbackText(Rectangle rect):boxText("",rect,3,18){}
+        void setText(std::string text)
+        {
+            this->text = text;
+            sepTextSize = 0; /// not measured yet.
+        }
+        void drawDominantLine()
+        {
+            if(bl=="")
+                bl = sepText[linePos];
+            if(gr>0)
+                DrawText(gr,rect.x,rect.y,font_size,GREEN);
+            if(re>0)
+                DrawText(re,rect.x + MeasureText(gr.c_str(),font_size),rect.y,font_size,RED);
+            DrawText(bl,rect.x + MeasureText((gr + re).c_str(),font_size),y,font_size,BLACK);
+        }
+        void draw()
+        {
+            if(sepTextSize == 0)
+                setSepText();
+            drawDominantLine();
+            for(int i=1;i<MAX_LINES && i+linePos < sepTextSize;i++)
+                DrawText(sepText[i+linePos],rect.x,rect.y + font_size*i,font_size,BLACK);
+        }
+    };
 
     class Loader
     {
@@ -254,46 +328,6 @@ namespace RayCerTyPer
             CloseWindow();
         }
     };
-    class smartText
-    { /// TO DO : IMPLEMENT
-        std::string text;
-        std::vector<std::string> sepText;
-        int linePos = 0;
-        Rectangle rect;
-        int text_size;
-        public:
-        smartText(){}
-        smartText(std::string text, Rectangle box, int text_size)
-        :text(text), rect(box), text_size(text_size){
-        }
-        void setSepText()
-        {
-            /// probably overcomplicated
-            int sz = text.size();
-            int pos = 0;
-            int nr = 0;
-            sepText.emplace_back();
-            while(pos < sz)
-            {
-                int extra = 0;
-                for(extra = 0;extra + pos < sz && text[extra+pos]!=' ';extra++);
-                std::string addedWord = text.substr(pos,extra+1);
-                if(MeasureText((sepText[nr]+addedWord).c_str(),text_size) > rect.width)
-                    nr++,sepText.emplace_back();
-                sepText[nr]+=addedWord;
-                pos += extra + 1;
-
-            }
-        }
-        void draw()
-        {
-            if(sepText.size() == 0)
-                setSepText();
-            DrawRectangleRec(rect,WHITE);
-            for(int i=0;i<3 && (unsigned int)i+linePos<sepText.size();i++)
-                DrawText(sepText[i+linePos].c_str(),rect.x,rect.y+i*text_size,text_size,BLACK);
-        }
-    };
     namespace ScreenManaging
     {
         Car *player;
@@ -311,7 +345,7 @@ namespace RayCerTyPer
         {
             public:
             Road roads = Road(2);
-            smartText Text = smartText("TEST 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5",{50,200,200,100},18);
+            ExtraRaylib::boxText Text = ExtraRaylib::boxText("TEST 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5",{50,200,200,100},3,18);
             void run()
             {
                 roads.run();
