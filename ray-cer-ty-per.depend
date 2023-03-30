@@ -1,10 +1,11 @@
 # depslib dependency file v1.0
-1679743294 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\ray-cer\main.cpp
+1680036545 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\ray-cer\main.cpp
 	<iostream>
 	<fstream>
-	<vector>
 	<raylib.h>
 	<map>
+	<random>
+	<chrono>
 
 1679645802 source:/home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/main.cpp
 	<iostream>

@@ -16,6 +16,19 @@ namespace ExtraRaylib
         using namespace std::chrono;
         return duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
     }
+    bool isKeyHeldFor(int key,int durationMS)
+    {
+        long long currentTime = getTimeMS();
+        static std::map<int,long long> timeMap;
+        if(IsKeyPressed(key))
+            timeMap[key] = currentTime;
+        if(!IsKeyDown(key))
+        {
+            timeMap[key] = -1;
+            return false;
+        }
+        return (currentTime - timeMap[key] >= durationMS);
+    }
     void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
     {
         /// not entirely sure what all the parameters mean but seems to work.
@@ -241,6 +254,46 @@ namespace RayCerTyPer
             CloseWindow();
         }
     };
+    class smartText
+    { /// TO DO : IMPLEMENT
+        std::string text;
+        std::vector<std::string> sepText;
+        int linePos = 0;
+        Rectangle rect;
+        int text_size;
+        public:
+        smartText(){}
+        smartText(std::string text, Rectangle box, int text_size)
+        :text(text), rect(box), text_size(text_size){
+        }
+        void setSepText()
+        {
+            /// probably overcomplicated
+            int sz = text.size();
+            int pos = 0;
+            int nr = 0;
+            sepText.emplace_back();
+            while(pos < sz)
+            {
+                int extra = 0;
+                for(extra = 0;extra + pos < sz && text[extra+pos]!=' ';extra++);
+                std::string addedWord = text.substr(pos,extra+1);
+                if(MeasureText((sepText[nr]+addedWord).c_str(),text_size) > rect.width)
+                    nr++,sepText.emplace_back();
+                sepText[nr]+=addedWord;
+                pos += extra + 1;
+
+            }
+        }
+        void draw()
+        {
+            if(sepText.size() == 0)
+                setSepText();
+            DrawRectangleRec(rect,WHITE);
+            for(int i=0;i<3 && (unsigned int)i+linePos<sepText.size();i++)
+                DrawText(sepText[i+linePos].c_str(),rect.x,rect.y+i*text_size,text_size,BLACK);
+        }
+    };
     namespace ScreenManaging
     {
         Car *player;
@@ -258,6 +311,7 @@ namespace RayCerTyPer
         {
             public:
             Road roads = Road(2);
+            smartText Text = smartText("TEST 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5",{50,200,200,100},18);
             void run()
             {
                 roads.run();
@@ -270,6 +324,7 @@ namespace RayCerTyPer
             void draw()
             {
                 roads.draw();
+                Text.draw();
             }
         } game;
         class ColorPicker : public ExtraRaylib::ScreenWrapper
@@ -317,6 +372,8 @@ namespace RayCerTyPer
                         ClearBackground(RAYWHITE);
                         currentScreen.getScreen()->draw();
                     EndDrawing();
+                    if(ExtraRaylib::isKeyHeldFor(KEY_ESCAPE,1500))
+                        break;
                 }
                 saveSettings();
             }
