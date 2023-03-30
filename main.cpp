@@ -57,7 +57,7 @@ namespace ExtraRaylib
                 int extra = 0;
                 for(extra = 0;extra + pos < sz && text[extra+pos]!=' ';extra++);
                 std::string addedWord = text.substr(pos,extra+1);
-                if(MeasureText((sepText[nr]+addedWord).c_str(),text_size) > rect.width)
+                if(MeasureText((sepText[nr]+addedWord).c_str(),font_size) > rect.width)
                     nr++,sepText.emplace_back();
                 sepText[nr]+=addedWord;
                 pos += extra + 1;
@@ -247,23 +247,67 @@ namespace RayCerTyPer
     {
         int linePos = 0;
         int charPos = 0;
-        int greenEnd = -1,redEnd = -1;
         std::string gr,re,bl;
-        FeedbackText(Rectangle rect):boxText("",rect,3,18){}
+        public:
+        FeedbackText():FeedbackText({0,0,0,0},""){}
+        FeedbackText(Rectangle rect,std::string text):boxText(text,rect,3,18){}
         void setText(std::string text)
         {
             this->text = text;
-            sepTextSize = 0; /// not measured yet.
+            setSepText();
+            restart();
+        }
+        void restart()
+        {
+            bl = sepText[0];
+            linePos = 0;
+            charPos = 0;
+            gr = re = "";
+        }
+        void run()
+        {
+            char c;
+            while((c = GetCharPressed()))
+            {
+                if(c != sepText[linePos][charPos] || !re.empty())
+                    re+=bl[0];
+                else
+                    gr+=bl[0];
+                bl.erase(0,1);
+                charPos++;
+                if(bl.empty())
+                {
+                    if(linePos == sepTextSize -1)
+                    {
+                        restart();
+                        continue;
+                    }
+                    linePos++;
+                    charPos=0;
+                    re=gr="";
+                }
+            }
+            if(IsKeyDown(KEY_BACKSPACE))
+            {
+                if(!re.empty())
+                {
+                    /// why is temp needed? because c++ said so.
+                    std::string temp;
+                    temp =re.back();
+                    bl.insert(0,temp);
+                    re.pop_back();
+                    charPos--;
+                }
+
+            }
         }
         void drawDominantLine()
         {
             if(bl=="")
                 bl = sepText[linePos];
-            if(gr>0)
-                DrawText(gr,rect.x,rect.y,font_size,GREEN);
-            if(re>0)
-                DrawText(re,rect.x + MeasureText(gr.c_str(),font_size),rect.y,font_size,RED);
-            DrawText(bl,rect.x + MeasureText((gr + re).c_str(),font_size),y,font_size,BLACK);
+            DrawText(gr.c_str(),rect.x,rect.y,font_size,GREEN);
+            DrawText(re.c_str(),rect.x + MeasureText(gr.c_str(),font_size),rect.y,font_size,RED);
+            DrawText(bl.c_str(),rect.x + MeasureText((gr + re).c_str(),font_size),rect.y,font_size,BLACK);
         }
         void draw()
         {
@@ -271,7 +315,7 @@ namespace RayCerTyPer
                 setSepText();
             drawDominantLine();
             for(int i=1;i<MAX_LINES && i+linePos < sepTextSize;i++)
-                DrawText(sepText[i+linePos],rect.x,rect.y + font_size*i,font_size,BLACK);
+                DrawText(sepText[i+linePos].c_str(),rect.x,rect.y + font_size*i,font_size,BLACK);
         }
     };
 
@@ -345,9 +389,10 @@ namespace RayCerTyPer
         {
             public:
             Road roads = Road(2);
-            ExtraRaylib::boxText Text = ExtraRaylib::boxText("TEST 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5 1 2 3 4 5",{50,200,200,100},3,18);
+            FeedbackText fText = FeedbackText({50,200,100,100},"TEsting 123");
             void run()
             {
+                fText.run();
                 roads.run();
                 int nr = roads.getCarRightClicked();
                 if(nr == 0) /// we can only custimize the first car (our own)
@@ -358,7 +403,7 @@ namespace RayCerTyPer
             void draw()
             {
                 roads.draw();
-                Text.draw();
+                fText.draw();
             }
         } game;
         class ColorPicker : public ExtraRaylib::ScreenWrapper
