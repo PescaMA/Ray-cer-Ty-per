@@ -248,6 +248,7 @@ namespace RayCerTyPer
         int linePos = 0;
         int charPos = 0;
         std::string gr,re,bl;
+        bool stop = false;
         public:
         FeedbackText():FeedbackText({0,0,0,0},""){}
         FeedbackText(Rectangle rect,std::string text):boxText(text,rect,3,18){}
@@ -262,9 +263,23 @@ namespace RayCerTyPer
             bl = sepText[0];
             linePos = 0;
             charPos = 0;
+            stop = false;
             gr = re = "";
         }
         void run()
+        {
+            eraseChr();
+            if(linePos == sepTextSize - 1 && bl.empty())
+            {
+                if(IsKeyDown(KEY_ENTER))
+                    restart();
+                return;
+            }
+            if(stop)
+                return;
+            addChr();
+        }
+        void addChr()
         {
             char c;
             while((c = GetCharPressed()))
@@ -277,40 +292,46 @@ namespace RayCerTyPer
                 charPos++;
                 if(bl.empty())
                 {
-                    if(linePos == sepTextSize -1)
+                    if(!re.empty())
                     {
-                        restart();
-                        continue;
+                        stop = true;
+                        break;
                     }
+
+
                     linePos++;
+                    if(linePos == sepTextSize)
+                        linePos--;
                     charPos=0;
                     re=gr="";
                 }
             }
-            if(IsKeyDown(KEY_BACKSPACE))
-            {
-                if(!re.empty())
-                {
-                    /// why is temp needed? because c++ said so.
-                    std::string temp;
-                    temp =re.back();
-                    bl.insert(0,temp);
-                    re.pop_back();
-                    charPos--;
-                }
+        }
+        void eraseChr()
+        {
+            if(!IsKeyDown(KEY_BACKSPACE) || re.empty())
+                return;
 
-            }
+            /// why is temp needed? because c++ said so.
+            std::string temp;
+            temp =re.back();
+            bl.insert(0,temp);
+            re.pop_back();
+            charPos--;
+            stop = false;
         }
         void drawDominantLine()
         {
-            if(bl=="")
+            if(bl=="" && !stop && linePos<sepTextSize)
                 bl = sepText[linePos];
+                /// PROBLEM : sqquiggly text
             DrawText(gr.c_str(),rect.x,rect.y,font_size,GREEN);
             DrawText(re.c_str(),rect.x + MeasureText(gr.c_str(),font_size),rect.y,font_size,RED);
             DrawText(bl.c_str(),rect.x + MeasureText((gr + re).c_str(),font_size),rect.y,font_size,BLACK);
         }
         void draw()
         {
+            DrawRectangleRec(rect,YELLOW);
             if(sepTextSize == 0)
                 setSepText();
             drawDominantLine();
@@ -389,7 +410,7 @@ namespace RayCerTyPer
         {
             public:
             Road roads = Road(2);
-            FeedbackText fText = FeedbackText({50,200,100,100},"TEsting 123");
+            FeedbackText fText = FeedbackText({50,200,300,100},"First things first I'ma test all the words of the english lexicon");
             void run()
             {
                 fText.run();
