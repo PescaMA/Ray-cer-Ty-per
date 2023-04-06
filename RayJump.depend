@@ -7,11 +7,12 @@
 	<random>
 	<chrono>
 
-1680764372 source:/home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/main.cpp
+1680797647 source:/home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/main.cpp
 	<iostream>
 	<fstream>
 	<raylib.h>
 	<map>
 	<random>
 	<chrono>
+	<string.h>
 

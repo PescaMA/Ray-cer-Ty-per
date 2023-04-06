@@ -4,9 +4,19 @@
 #include <map>      /// for settings
 #include <random>   /// for randomized colors
 #include <chrono>   /// for time
+#include <string.h> /// for char functions
 namespace ExtraRaylib
 {
-        long long getTimeMS()
+    /// TO do: recode raylib.
+    /************************************
+              DIVERSE FUNCTIONS
+    ************************************/
+    bool specialKeysDown()
+    {
+        return IsKeyDown(KEY_BACKSPACE) || IsKeyDown(KEY_CAPS_LOCK) || IsKeyDown(KEY_DELETE)
+        || IsKeyDown(KEY_END) || IsKeyDown(KEY_ENTER) key
+    }
+    long long getTimeMS()
     {
         using namespace std::chrono;
         return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
@@ -29,15 +39,71 @@ namespace ExtraRaylib
         }
         return (currentTime - timeMap[key] >= durationMS);
     }
+    void align(float &coord,int startCoord,int length,float percent,int textSize)
+    {
+        int oldCoord=coord;
+        coord=coord + length*percent -textSize/2;
+        if(coord + textSize > oldCoord + length)
+            coord = oldCoord + length - textSize;
+        if(coord<oldCoord)
+            coord=oldCoord;
+    }
+
+    /************************************
+                TEXT CLASSES
+    ************************************/
+
+    struct Txt
+    {
+        Font *font; /// pointer so we can load it later
+        float x,y,fontSize;
+        char text[105];
+        Color color;
+        Txt(Font *font,char const text[105],int x,int y,int fontSize,Color color)
+        :font(font),x(x),y(y),fontSize(fontSize),color(color)
+        {
+            strcpy(this->text,text);
+        }
+        void draw(bool shouldUnderline=false)
+        {
+            DrawTextEx(*font,text,{x,y},fontSize,1,color);
+            if(shouldUnderline)
+                underline();
+        }
+        void underline()
+        {
+            int len=MeasureTextEx(*font,text,fontSize,1).x;
+            Vector2 init= {x,y+fontSize};
+            Vector2 endp= {x+len,y+fontSize};
+            DrawLineEx(init,endp,fontSize/20+1,color);
+        }
+    };
+    struct TxtAligned : public Txt
+    {
+        float xPercent,yPercent;
+        Rectangle *container;
+        TxtAligned(Font *font,char const text[105],Rectangle &container,int xPercent,int yPercent,int fontSize,Color color)
+        :Txt(font,text,container.x,container.y,fontSize,color)
+        {
+            this->container = &container;
+            this->align();
+        }
+        void align()
+        {
+            ///void align(float &coord,int startCoord,int length,int percent,int textSize)
+            ExtraRaylib::align(x,container->x,container->width,xPercent,fontSize);
+            ExtraRaylib::align(y,container->y,container->height,yPercent,fontSize);
+        }
+    };
     class boxText
     {
         protected:
         std::string text;
         std::vector<std::string> sepText;
         Rectangle rect;
-        Font *font;
         int font_size;
         int const MAX_LINES;
+        Font *font;
         int sepTextSize = 0;
         public:
         boxText():MAX_LINES(-1){}
@@ -84,6 +150,11 @@ namespace ExtraRaylib
     {
         return (x1-x2) * (x1-x2) + (y1-y2) * (y1-y2);
     }
+
+    /************************************
+              DIVERSE CLASSES
+    ************************************/
+
     struct Slider
     {
         int len = 100;
@@ -170,7 +241,7 @@ namespace ExtraRaylib
         virtual void draw(){}
     };
 }
-namespace RayCerTyPer
+namespace RayJump
 {
     std::map<std::string,double> settings;
     int const fps = 60;
@@ -353,7 +424,7 @@ namespace RayCerTyPer
             SetConfigFlags(FLAG_WINDOW_RESIZABLE);
             defaultSettings();
             readSettings();
-            InitWindow(ScreenInfo.width,ScreenInfo.height,"Ray-cer");
+            InitWindow(ScreenInfo.width,ScreenInfo.height,"Rayjump");
             myFont = LoadFontEx("liberation_mono.ttf", 18, NULL, -1);
             SetExitKey(0);
             Car::ASSET_STRUCTURE = LoadTexture("Images/carStructure.png");
@@ -403,13 +474,27 @@ namespace RayCerTyPer
         class ScreenStuff
         {
             public:
-            enum screens{Sgame,SRGBpick} now = Sgame;
+            enum screens{Sgame,SRGBpick,Stitle} now = Sgame;
             void setScreen(screens screen)
             {
                 now = screen;
             }
             ExtraRaylib::ScreenWrapper* getScreen();
         }currentScreen;
+        class veryUsefulAndProfessionalTitleScreenWithJustTheName
+        {
+            std::string title = "RayJump";
+            void run()
+            {
+                if(GetKeyPressed())
+                    currentScreen.setScreen(ScreenStuff::screens::Sgame);
+
+            }
+            void draw()
+            {
+
+            }
+        };
         class NormalGame : public ExtraRaylib::ScreenWrapper
         {
             public:
@@ -504,8 +589,8 @@ namespace RayCerTyPer
 }
 int main()
 {
-    RayCerTyPer::Loader loader;
+    RayJump::Loader loader;
     loader.load();
-    RayCerTyPer::ScreenManaging::MainLoop::run();
+    RayJump::ScreenManaging::MainLoop::run();
     loader.unload();
 }
