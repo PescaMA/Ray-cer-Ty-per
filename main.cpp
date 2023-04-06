@@ -11,10 +11,17 @@ namespace ExtraRaylib
     /************************************
               DIVERSE FUNCTIONS
     ************************************/
-    bool specialKeysDown()
+    int getSpecialKeyDown()
     {
-        return IsKeyDown(KEY_BACKSPACE) || IsKeyDown(KEY_CAPS_LOCK) || IsKeyDown(KEY_DELETE)
-        || IsKeyDown(KEY_END) || IsKeyDown(KEY_ENTER) key
+        /// warning: slow function probably
+        /// DO NOT QUESTION MASTER RAYLIB
+        for(int i=256;i<=301;i++)
+            if(IsKeyDown(i))
+                return i;
+        for(int i=340;i<=347;i++)
+            if(IsKeyDown(i))
+                return i;
+        return -1;
     }
     long long getTimeMS()
     {
@@ -41,12 +48,11 @@ namespace ExtraRaylib
     }
     void align(float &coord,int startCoord,int length,float percent,int textSize)
     {
-        int oldCoord=coord;
-        coord=coord + length*percent -textSize/2;
-        if(coord + textSize > oldCoord + length)
-            coord = oldCoord + length - textSize;
-        if(coord<oldCoord)
-            coord=oldCoord;
+        coord=startCoord + length*percent -textSize/2;
+        if(coord + textSize > startCoord + length)
+            coord = startCoord + length - textSize;
+        if(coord<startCoord)
+            coord=startCoord;
     }
 
     /************************************
@@ -83,7 +89,7 @@ namespace ExtraRaylib
         float xPercent,yPercent;
         Rectangle *container;
         TxtAligned(Font *font,char const text[105],Rectangle &container,int xPercent,int yPercent,int fontSize,Color color)
-        :Txt(font,text,container.x,container.y,fontSize,color)
+        :Txt(font,text,container.x,container.y,fontSize,color),xPercent(xPercent/100.0),yPercent(yPercent/100.0)
         {
             this->container = &container;
             this->align();
@@ -91,7 +97,7 @@ namespace ExtraRaylib
         void align()
         {
             ///void align(float &coord,int startCoord,int length,int percent,int textSize)
-            ExtraRaylib::align(x,container->x,container->width,xPercent,fontSize);
+            ExtraRaylib::align(x,container->x,container->width,xPercent,MeasureTextEx(*font,text,fontSize,1).x);
             ExtraRaylib::align(y,container->y,container->height,yPercent,fontSize);
         }
     };
@@ -341,6 +347,8 @@ namespace RayJump
         }
         void run()
         {
+            if(text.size() == 0)
+                return;
             eraseChr();
             if(linePos == sepTextSize - 1 && bl.empty())
             {
@@ -405,6 +413,8 @@ namespace RayJump
         }
         void draw()
         {
+            if(text.size() == 0)
+                return;
             DrawRectangleRec(rect,YELLOW);
             if(sepTextSize == 0)
                 setSepText();
@@ -425,7 +435,7 @@ namespace RayJump
             defaultSettings();
             readSettings();
             InitWindow(ScreenInfo.width,ScreenInfo.height,"Rayjump");
-            myFont = LoadFontEx("liberation_mono.ttf", 18, NULL, -1);
+            myFont = LoadFontEx("liberation_mono.ttf", 18*4, NULL, -1);
             SetExitKey(0);
             Car::ASSET_STRUCTURE = LoadTexture("Images/carStructure.png");
             Car::ASSET_COLOR = LoadTexture("Images/carColor.png");
@@ -481,25 +491,30 @@ namespace RayJump
             }
             ExtraRaylib::ScreenWrapper* getScreen();
         }currentScreen;
-        class veryUsefulAndProfessionalTitleScreenWithJustTheName
+        class veryUsefulAndProfessionalTitleScreenWithJustTheName : public ExtraRaylib::ScreenWrapper
         {
-            std::string title = "RayJump";
+            ExtraRaylib::TxtAligned title = ExtraRaylib::TxtAligned(&myFont,"RayJump",ScreenInfo,50,20,18*3,BLACK);
+            ExtraRaylib::TxtAligned start = ExtraRaylib::TxtAligned(&myFont,"- Press any button to start -",ScreenInfo,50,70,18,RED);
             void run()
             {
-                if(GetKeyPressed())
+                title.align();
+                start.align();
+                if(GetKeyPressed() || ExtraRaylib::getSpecialKeyDown()!=-1)
                     currentScreen.setScreen(ScreenStuff::screens::Sgame);
-
             }
             void draw()
             {
+                ClearBackground(RAYWHITE);
+                title.draw();
+                start.draw();
 
             }
-        };
+        }title;
         class NormalGame : public ExtraRaylib::ScreenWrapper
         {
             public:
             Road roads = Road(2);
-            FeedbackText fText = FeedbackText({50,200,300,100},"First the english lexicon then the romanin one");
+            FeedbackText fText = FeedbackText({50,200,300,100},"true that's the problem.....");
             void run()
             {
                 fText.run();
@@ -542,6 +557,8 @@ namespace RayJump
             ExtraRaylib::ScreenWrapper *screen;
             if(now == Sgame) screen = &game;
             if(now == SRGBpick) screen = &colorPicker;
+            if(now == Stitle) screen = &title;
+
             return screen;
         }
         class MainLoop
@@ -549,7 +566,7 @@ namespace RayJump
         public:
             static void run()
             {
-                currentScreen.setScreen(ScreenStuff::screens::Sgame);
+                currentScreen.setScreen(ScreenStuff::screens::Stitle);
                 player = &game.roads.cars[0];
                 loadSettings();
                 colorPicker.setColor(player->color);
