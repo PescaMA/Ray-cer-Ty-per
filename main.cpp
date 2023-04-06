@@ -139,11 +139,11 @@ namespace ExtraRaylib
         }
         void draw(int linePos = 0)
         {
-            /*if(sepTextSize == 0)
+            if(sepTextSize == 0)
                 setSepText();
             DrawRectangleRec(rect,WHITE);
             for(int i=0;i<MAX_LINES && i+linePos<sepTextSize;i++)
-                DrawText(sepText[i+linePos].c_str(),rect.x,rect.y+i*font_size,font_size,BLACK);*/
+                DrawTextEx(*font,sepText[i+linePos].c_str(),{rect.x,rect.y+i*font_size},font_size,1,BLACK);
         }
     };
     void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
@@ -260,25 +260,36 @@ namespace RayJump
         static int const WIDTH = 120; /// sprite width
         static int const HEIGHT = 48; /// sprite height
 
-        float xPoz = START;
+        float xPr = 0;
         float const y;
+        float *screenWidth =nullptr;
+        float roadWidth;
 
         Color color = {0,222,0,255};
         static Texture2D ASSET_STRUCTURE;
         static Texture2D ASSET_COLOR;
         Car():y(0){}
-        Car(float y):y(y){}
+        Car(float y,float &screenWidth):y(y),screenWidth(&screenWidth){}
         void run()
         {
+            roadWidth = *screenWidth * 0.75;
         }
         bool rightClicked()
         {
-            return IsMouseButtonDown(1) && CheckCollisionPointRec(GetMousePosition(),{xPoz,y,WIDTH,HEIGHT});
+            return IsMouseButtonDown(1) && CheckCollisionPointRec(GetMousePosition(),{getPos(),y,WIDTH,HEIGHT});
+        }
+        void setXPr(float prc)
+        {
+            xPr = prc;
+        }
+        float getPos()
+        {
+            return START + (roadWidth-WIDTH) * xPr;
         }
         void draw()
         {
-            DrawTexture(ASSET_COLOR,START,y,color);
-            DrawTexture(ASSET_STRUCTURE,START,y,WHITE);
+            DrawTexture(ASSET_COLOR,getPos(),y,color);
+            DrawTexture(ASSET_STRUCTURE,getPos(),y,WHITE);
         }
     }; ///non const statics need to be declared
     Texture2D Car::ASSET_STRUCTURE;
@@ -290,14 +301,13 @@ namespace RayJump
         int nrOfRoads = 1;
 
         int const Xstart = 40;
-        int const width = 300;
         public:
         std::vector <Car> cars;
         Road(int nr_of_cars)
         {
             nrOfRoads = nr_of_cars;
             for(int i=0;i<nr_of_cars;i++)
-                cars.emplace_back(Ystart + i*Ylength);
+                cars.emplace_back(Ystart + i*Ylength,ScreenInfo.width);
         }
         void run()
         {
@@ -315,7 +325,7 @@ namespace RayJump
         }
         void draw()
         {
-            DrawRectangle(Xstart,Ystart,width,nrOfRoads*Ylength,GRAY);
+            DrawRectangle(Xstart,Ystart,cars[0].roadWidth,nrOfRoads*Ylength,GRAY);
             int sz = cars.size();
             for(int i=0; i<sz; i++)
                 cars[i].draw();
@@ -326,8 +336,14 @@ namespace RayJump
     {
         int linePos = 0;
         int charPos = 0;
+        int wpm = 0, accuracy = 10000;
+        int incorrects = 0,total = 0;
+        int maxChar,currentChar=0;
         std::string gr,re,bl;
         bool stop = false;
+        bool stop2 = false;
+        long long startTime = 0;
+        int secondPassed = 0;
         public:
         FeedbackText():FeedbackText({0,0,0,0},""){}
         FeedbackText(Rectangle rect,std::string text):boxText(text,rect,3,18,&myFont){}
@@ -340,15 +356,22 @@ namespace RayJump
         void restart()
         {
             bl = sepText[0];
-            linePos = 0;
-            charPos = 0;
-            stop = false;
+            linePos = charPos = currentChar = incorrects = total = 0;
+            maxChar = text.size();
+            stop = stop2 =false;
             gr = re = "";
+            startTime = secondPassed = 0;
+            wpm = 0;
+            accuracy = 10000;
         }
         void run()
         {
-            if(text.size() == 0)
+            if(maxChar == 0) maxChar = text.size();
+            if(maxChar == 0)
                 return;
+                calculate();
+            if(startTime == 0 && currentChar !=0)
+                startTime = ExtraRaylib::getTimeMS();
             eraseChr();
             if(linePos == sepTextSize - 1 && bl.empty())
             {
@@ -360,17 +383,62 @@ namespace RayJump
                 return;
             addChr();
         }
+        float getPrc()
+        {
+            return 1.0f * currentChar / maxChar;
+        }
+        int getTime()
+        {
+            if(startTime == 0)return 0;
+            return std::max(ExtraRaylib::getTimeMS() - startTime,1LL * 1);
+        }
+        void calculate()
+        {
+            if ( startTime == 0) return;
+            if(linePos == sepTextSize - 1 && bl.empty())
+            {
+                if(stop2)
+                    return;
+                stop2 = true;
+            }
+            if(secondPassed == getTime()/1000 && !stop2)
+                return;
+            secondPassed ++ ;
+            wpm = 1.0f*currentChar/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
+            accuracy = 1.0f * currentChar / total * 10000;
+        }
+        int getWPM()
+        {
+            return wpm;
+        }
+        int getAccuracy()
+        {
+            return accuracy;
+        }
         void addChr()
         {
             char c;
             while((c = GetCharPressed()))
             {
                 if(c != sepText[linePos][charPos] || !re.empty())
-                    re+=bl[0];
+                {
+                    if(re.empty() && currentChar)
+                        incorrects++;
+                    if(currentChar)
+                        re+=bl[0];
+                }
+
                 else
+                {
                     gr+=bl[0];
-                bl.erase(0,1);
-                charPos++;
+                    currentChar++;
+                }
+                if(currentChar)
+                {
+                    total ++ ;
+                    bl.erase(0,1);
+                    charPos++;
+                }
                 if(bl.empty())
                 {
                     if(!re.empty())
@@ -378,15 +446,12 @@ namespace RayJump
                         stop = true;
                         break;
                     }
-
-
                     linePos++;
                     if(linePos == sepTextSize)
                         linePos--,stop = true;
                         else
                             re=gr="";
                     charPos=0;
-
                 }
             }
         }
@@ -517,6 +582,7 @@ namespace RayJump
             FeedbackText fText = FeedbackText({50,200,300,100},"true that's the problem.....");
             void run()
             {
+                player->setXPr(fText.getPrc());
                 fText.run();
                 roads.run();
                 int nr = roads.getCarRightClicked();
@@ -528,6 +594,10 @@ namespace RayJump
             void draw()
             {
                 roads.draw();
+                DrawTextEx(myFont,std::to_string(fText.getWPM()).c_str(),{0,0},18,1,BLACK);
+                std::string chestie = std::to_string(fText.getAccuracy());
+                chestie.insert(chestie.size()-2,".");
+                DrawTextEx(myFont,chestie.c_str(),{100,0},18,1,BLACK);
                 fText.draw();
             }
         } game;

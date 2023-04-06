@@ -2,4 +2,4 @@ PlayerB 255
 PlayerG 0
 PlayerR 255
 ScreenHeight 514
-ScreenWidth 545
+ScreenWidth 670
