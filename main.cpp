@@ -35,13 +35,14 @@ namespace ExtraRaylib
         std::string text;
         std::vector<std::string> sepText;
         Rectangle rect;
+        Font *font;
         int font_size;
         int const MAX_LINES;
         int sepTextSize = 0;
         public:
         boxText():MAX_LINES(-1){}
-        boxText(std::string text, Rectangle box, int max_nr_lines,int font_size)
-        :text(text), rect(box), font_size(std::max(font_size,8)), MAX_LINES(max_nr_lines){
+        boxText(std::string text, Rectangle box, int max_nr_lines,int font_size,Font *font)
+        :text(text), rect(box), font_size(std::max(font_size,8)), MAX_LINES(max_nr_lines), font(font){
             rect.height = MAX_LINES * font_size;
         }
         void setSepText()
@@ -57,7 +58,7 @@ namespace ExtraRaylib
                 int extra = 0;
                 for(extra = 0;extra + pos < sz && text[extra+pos]!=' ';extra++);
                 std::string addedWord = text.substr(pos,extra+1);
-                if(MeasureText((sepText[nr]+addedWord).c_str(),font_size) > rect.width)
+                if(MeasureTextEx(*font,(sepText[nr]+addedWord).c_str(),font_size,1).x > rect.width)
                     nr++,sepText.emplace_back();
                 sepText[nr]+=addedWord;
                 pos += extra + 1;
@@ -66,11 +67,11 @@ namespace ExtraRaylib
         }
         void draw(int linePos = 0)
         {
-            if(sepTextSize == 0)
+            /*if(sepTextSize == 0)
                 setSepText();
             DrawRectangleRec(rect,WHITE);
             for(int i=0;i<MAX_LINES && i+linePos<sepTextSize;i++)
-                DrawText(sepText[i+linePos].c_str(),rect.x,rect.y+i*font_size,font_size,BLACK);
+                DrawText(sepText[i+linePos].c_str(),rect.x,rect.y+i*font_size,font_size,BLACK);*/
         }
     };
     void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
@@ -243,6 +244,7 @@ namespace RayCerTyPer
                 cars[i].draw();
         }
     };
+    Font myFont;
     class FeedbackText : public ExtraRaylib::boxText
     {
         int linePos = 0;
@@ -251,7 +253,7 @@ namespace RayCerTyPer
         bool stop = false;
         public:
         FeedbackText():FeedbackText({0,0,0,0},""){}
-        FeedbackText(Rectangle rect,std::string text):boxText(text,rect,3,18){}
+        FeedbackText(Rectangle rect,std::string text):boxText(text,rect,3,18,&myFont){}
         void setText(std::string text)
         {
             this->text = text;
@@ -301,9 +303,11 @@ namespace RayCerTyPer
 
                     linePos++;
                     if(linePos == sepTextSize)
-                        linePos--;
+                        linePos--,stop = true;
+                        else
+                            re=gr="";
                     charPos=0;
-                    re=gr="";
+
                 }
             }
         }
@@ -324,10 +328,9 @@ namespace RayCerTyPer
         {
             if(bl=="" && !stop && linePos<sepTextSize)
                 bl = sepText[linePos];
-                /// PROBLEM : sqquiggly text
-            DrawText(gr.c_str(),rect.x,rect.y,font_size,GREEN);
-            DrawText(re.c_str(),rect.x + MeasureText(gr.c_str(),font_size),rect.y,font_size,RED);
-            DrawText(bl.c_str(),rect.x + MeasureText((gr + re).c_str(),font_size),rect.y,font_size,BLACK);
+            DrawTextEx(*font,gr.c_str(),{rect.x,rect.y},font_size,1,GREEN);
+            DrawTextEx(*font,re.c_str(),{rect.x + MeasureTextEx(*font,gr.c_str(),font_size,1).x,rect.y},font_size,1,RED);
+            DrawTextEx(*font,bl.c_str(),{rect.x + MeasureTextEx(*font,(gr + re).c_str(),font_size,1).x,rect.y},font_size,1,BLACK);
         }
         void draw()
         {
@@ -336,7 +339,7 @@ namespace RayCerTyPer
                 setSepText();
             drawDominantLine();
             for(int i=1;i<MAX_LINES && i+linePos < sepTextSize;i++)
-                DrawText(sepText[i+linePos].c_str(),rect.x,rect.y + font_size*i,font_size,BLACK);
+            DrawTextEx(*font, sepText[i+linePos].c_str(),{rect.x,rect.y + font_size*i},font_size,1,BLACK);
         }
     };
 
@@ -351,6 +354,7 @@ namespace RayCerTyPer
             defaultSettings();
             readSettings();
             InitWindow(ScreenInfo.width,ScreenInfo.height,"Ray-cer");
+            myFont = LoadFontEx("liberation_mono.ttf", 18, NULL, -1);
             SetExitKey(0);
             Car::ASSET_STRUCTURE = LoadTexture("Images/carStructure.png");
             Car::ASSET_COLOR = LoadTexture("Images/carColor.png");
@@ -410,7 +414,7 @@ namespace RayCerTyPer
         {
             public:
             Road roads = Road(2);
-            FeedbackText fText = FeedbackText({50,200,300,100},"First things first I'ma test all the words of the english lexicon");
+            FeedbackText fText = FeedbackText({50,200,300,100},"First the english lexicon then the romanin one");
             void run()
             {
                 fText.run();
