@@ -23,6 +23,23 @@ namespace ExtraRaylib
                 return i;
         return -1;
     }
+    void drawtextUnicode(Font font, std::u16string text,Vector2 position, int font_size,int spacing,Color color)
+    {
+        while(!text.empty())
+        {
+            DrawTextCodepoint(font,text[0],position,font_size,color);
+            std::string a;
+            a+=text[0];
+            position.x += MeasureTextEx(font,a.c_str(),font_size,spacing).x;
+            text.erase(0,1);
+        }
+    }
+    float MeasureTextUnicode(Font font,std::u16string text,int font_size,float spacing)
+    { /// Font must be monospaced!
+        int length = text.size();
+        if(length == 0) return 0.0f;
+        return length * MeasureTextEx(font,"a",font_size,spacing).x;
+    }
     long long getTimeMS()
     {
         using namespace std::chrono;
@@ -65,6 +82,7 @@ namespace ExtraRaylib
         float x,y,fontSize;
         char text[105];
         Color color;
+        Txt(){}
         Txt(Font *font,char const text[105],int x,int y,int fontSize,Color color)
         :font(font),x(x),y(y),fontSize(fontSize),color(color)
         {
@@ -88,6 +106,7 @@ namespace ExtraRaylib
     {
         float xPercent,yPercent;
         Rectangle *container;
+        TxtAligned(){}
         TxtAligned(Font *font,char const text[105],Rectangle &container,int xPercent,int yPercent,int fontSize,Color color)
         :Txt(font,text,container.x,container.y,fontSize,color),xPercent(xPercent/100.0),yPercent(yPercent/100.0)
         {
@@ -104,8 +123,8 @@ namespace ExtraRaylib
     class boxText
     {
         protected:
-        std::string text;
-        std::vector<std::string> sepText;
+        std::u16string text;
+        std::vector<std::u16string> sepText;
         Rectangle rect;
         int font_size;
         int const MAX_LINES;
@@ -113,7 +132,7 @@ namespace ExtraRaylib
         int sepTextSize = 0;
         public:
         boxText():MAX_LINES(-1){}
-        boxText(std::string text, Rectangle box, int max_nr_lines,int font_size,Font *font)
+        boxText(std::u16string text, Rectangle box, int max_nr_lines,int font_size,Font *font)
         :text(text), rect(box), font_size(std::max(font_size,8)), MAX_LINES(max_nr_lines), font(font){
             rect.height = MAX_LINES * font_size;
         }
@@ -129,8 +148,8 @@ namespace ExtraRaylib
             {
                 int extra = 0;
                 for(extra = 0;extra + pos < sz && text[extra+pos]!=' ';extra++);
-                std::string addedWord = text.substr(pos,extra+1);
-                if(MeasureTextEx(*font,(sepText[nr]+addedWord).c_str(),font_size,1).x > rect.width)
+                std::u16string addedWord = text.substr(pos,extra+1);
+                if(MeasureTextUnicode(*font,sepText[nr]+addedWord,font_size,1) > rect.width)
                     nr++,sepText.emplace_back();
                 sepText[nr]+=addedWord;
                 pos += extra + 1;
@@ -143,7 +162,7 @@ namespace ExtraRaylib
                 setSepText();
             DrawRectangleRec(rect,WHITE);
             for(int i=0;i<MAX_LINES && i+linePos<sepTextSize;i++)
-                DrawTextEx(*font,sepText[i+linePos].c_str(),{rect.x,rect.y+i*font_size},font_size,1,BLACK);
+                ExtraRaylib::drawtextUnicode(*font,sepText[i+linePos].c_str(),{rect.x,rect.y+i*font_size},font_size,1,BLACK);
         }
     };
     void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
@@ -247,6 +266,9 @@ namespace ExtraRaylib
         virtual void draw(){}
     };
 }
+
+
+
 namespace RayJump
 {
     std::map<std::string,double> settings;
@@ -332,22 +354,24 @@ namespace RayJump
         }
     };
     Font myFont;
+
+    /// TO DO: refactor.
     class FeedbackText : public ExtraRaylib::boxText
     {
-        int linePos = 0;
+        int linePos = 0; /// line position in separated text
         int charPos = 0;
         int wpm = 0, accuracy = 10000;
         int incorrects = 0,total = 0;
         int maxChar,currentChar=0;
-        std::string gr,re,bl;
+        std::u16string gr,re,bl;
         bool stop = false;
         bool stop2 = false;
         long long startTime = 0;
         int secondPassed = 0;
         public:
-        FeedbackText():FeedbackText({0,0,0,0},""){}
-        FeedbackText(Rectangle rect,std::string text):boxText(text,rect,3,18,&myFont){}
-        void setText(std::string text)
+        FeedbackText():FeedbackText({0,0,0,0},u""){}
+        FeedbackText(Rectangle rect,std::u16string text):boxText(text,rect,3,18,&myFont){}
+        void setText(std::u16string text)
         {
             this->text = text;
             setSepText();
@@ -359,7 +383,7 @@ namespace RayJump
             linePos = charPos = currentChar = incorrects = total = 0;
             maxChar = text.size();
             stop = stop2 =false;
-            gr = re = "";
+            gr = re = u"";
             startTime = secondPassed = 0;
             wpm = 0;
             accuracy = 10000;
@@ -369,7 +393,7 @@ namespace RayJump
             if(maxChar == 0) maxChar = text.size();
             if(maxChar == 0)
                 return;
-                calculate();
+            calculate();
             if(startTime == 0 && currentChar !=0)
                 startTime = ExtraRaylib::getTimeMS();
             eraseChr();
@@ -407,19 +431,15 @@ namespace RayJump
             wpm = 1.0f*currentChar/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
             accuracy = 1.0f * currentChar / total * 10000;
         }
-        int getWPM()
-        {
-            return wpm;
-        }
-        int getAccuracy()
-        {
-            return accuracy;
-        }
+        int getWPM() {return wpm;}
+        int getAccuracy() {return accuracy;}
         void addChr()
         {
-            char c;
-            while((c = GetCharPressed()))
+            int alfa;
+            while((alfa = GetCharPressed()))
             {
+                char16_t c = alfa;
+                std::cout << c << ' ' << sepText[linePos][charPos] << '\n';
                 if(c != sepText[linePos][charPos] || !re.empty())
                 {
                     if(re.empty() && currentChar)
@@ -427,7 +447,6 @@ namespace RayJump
                     if(currentChar)
                         re+=bl[0];
                 }
-
                 else
                 {
                     gr+=bl[0];
@@ -450,7 +469,7 @@ namespace RayJump
                     if(linePos == sepTextSize)
                         linePos--,stop = true;
                         else
-                            re=gr="";
+                            re=gr=u"";
                     charPos=0;
                 }
             }
@@ -461,7 +480,7 @@ namespace RayJump
                 return;
 
             /// why is temp needed? because c++ said so.
-            std::string temp;
+            std::u16string temp;
             temp =re.back();
             bl.insert(0,temp);
             re.pop_back();
@@ -470,11 +489,11 @@ namespace RayJump
         }
         void drawDominantLine()
         {
-            if(bl=="" && !stop && linePos<sepTextSize)
+            if(bl==u"" && !stop && linePos<sepTextSize)
                 bl = sepText[linePos];
-            DrawTextEx(*font,gr.c_str(),{rect.x,rect.y},font_size,1,GREEN);
-            DrawTextEx(*font,re.c_str(),{rect.x + MeasureTextEx(*font,gr.c_str(),font_size,1).x,rect.y},font_size,1,RED);
-            DrawTextEx(*font,bl.c_str(),{rect.x + MeasureTextEx(*font,(gr + re).c_str(),font_size,1).x,rect.y},font_size,1,BLACK);
+            ExtraRaylib::drawtextUnicode(*font,gr,{rect.x,rect.y},font_size,1,GREEN);
+            ExtraRaylib::drawtextUnicode(*font,re,{rect.x + ExtraRaylib::MeasureTextUnicode(*font,gr,font_size,1),rect.y},font_size,1,RED);
+            ExtraRaylib::drawtextUnicode(*font,bl,{rect.x + ExtraRaylib::MeasureTextUnicode(*font,(gr + re),font_size,1),rect.y},font_size,1,BLACK);
         }
         void draw()
         {
@@ -485,7 +504,7 @@ namespace RayJump
                 setSepText();
             drawDominantLine();
             for(int i=1;i<MAX_LINES && i+linePos < sepTextSize;i++)
-            DrawTextEx(*font, sepText[i+linePos].c_str(),{rect.x,rect.y + font_size*i},font_size,1,BLACK);
+            ExtraRaylib::drawtextUnicode(*font, sepText[i+linePos],{rect.x,rect.y + font_size*i},font_size,1,BLACK);
         }
     };
 
@@ -500,7 +519,7 @@ namespace RayJump
             defaultSettings();
             readSettings();
             InitWindow(ScreenInfo.width,ScreenInfo.height,"Rayjump");
-            myFont = LoadFontEx("liberation_mono.ttf", 18*4, NULL, -1);
+            myFont = LoadFontEx("liberation_mono.ttf", 18*4, NULL, 1000);
             SetExitKey(0);
             Car::ASSET_STRUCTURE = LoadTexture("Images/carStructure.png");
             Car::ASSET_COLOR = LoadTexture("Images/carColor.png");
@@ -518,7 +537,7 @@ namespace RayJump
         }
         void readSettings()
         {
-            std::ifstream fin("settings.txt");
+            std::ifstream fin("Text_files/settings.txt");
             if(!fin)
                 return;
             std::string name;
@@ -529,7 +548,7 @@ namespace RayJump
         }
         void changeSettings()
         {
-            std::ofstream fout("settings.txt");
+            std::ofstream fout("Text_files/settings.txt");
             if(!fout)return;
             for(std::map<std::string,double>::iterator it=settings.begin();it!=settings.end();it++)
                 fout<<it->first<<' '<<it->second<<'\n';
@@ -543,6 +562,10 @@ namespace RayJump
             CloseWindow();
         }
     };
+
+
+
+
     namespace ScreenManaging
     {
         Car *player;
@@ -558,8 +581,14 @@ namespace RayJump
         }currentScreen;
         class veryUsefulAndProfessionalTitleScreenWithJustTheName : public ExtraRaylib::ScreenWrapper
         {
-            ExtraRaylib::TxtAligned title = ExtraRaylib::TxtAligned(&myFont,"RayJump",ScreenInfo,50,20,18*3,BLACK);
-            ExtraRaylib::TxtAligned start = ExtraRaylib::TxtAligned(&myFont,"- Press any button to start -",ScreenInfo,50,70,18,RED);
+            ExtraRaylib::TxtAligned title;
+            ExtraRaylib::TxtAligned start;
+            public:
+            void init()
+            {
+                title = ExtraRaylib::TxtAligned(&myFont,"RayJump",ScreenInfo,50,20,18*3,BLACK);
+                start = ExtraRaylib::TxtAligned(&myFont,"- Press any button to start -",ScreenInfo,50,70,18,RED);
+            }
             void run()
             {
                 title.align();
@@ -579,7 +608,7 @@ namespace RayJump
         {
             public:
             Road roads = Road(2);
-            FeedbackText fText = FeedbackText({50,200,300,100},"true that's the problem.....");
+            FeedbackText fText = FeedbackText({50,200,300,100},u"țNoi suntem, sau am fost, unul din puținele neamuri europene care am experimentat contemplaţia în suferinţă. Mircea Eliade");
             void run()
             {
                 player->setXPr(fText.getPrc());
@@ -636,6 +665,7 @@ namespace RayJump
         public:
             static void run()
             {
+                title.init();
                 currentScreen.setScreen(ScreenStuff::screens::Stitle);
                 player = &game.roads.cars[0];
                 loadSettings();
