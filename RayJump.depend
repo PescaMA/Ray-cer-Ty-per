@@ -16,12 +16,24 @@
 	<chrono>
 	<string.h>
 
-1681493090 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\main.cpp
+1681553795 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\main.cpp
 	<iostream>
 	<fstream>
 	<raylib.h>
 	<map>
 	<random>
 	<chrono>
+	<string.h>
+	"Headers/ExtraRaylib.h"
+
+1681554576 d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\headers\extraraylib.h
+	<raylib.h>
+	<iostream>
+	<vector>
+
+1681554492 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\headers\extraraylib.cpp
+	"ExtraRaylib.h"
+	<chrono>
+	<map>
 	<string.h>
 
