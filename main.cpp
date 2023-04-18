@@ -1,8 +1,8 @@
-#include <iostream> /// for errors
+#include <iostream> /// for errors and strings
 #include <fstream>  /// for saving/loading data
-#include <raylib.h> /// for GUI
+#include "raylib.h" /// for brain damage
 #include <map>      /// for settings
-#include <random>   /// for randomized colors
+#include <random>   /// for randomizing
 #include <chrono>   /// for time
 #include <string.h> /// for char functions
 #include "Headers/ExtraRaylib.h"
@@ -160,6 +160,7 @@ namespace RayJump
         bool stop2 = false;
         long long startTime = 0;
         int secondPassed = 0;
+        bool finished = false;
         public:
         FeedbackText():FeedbackText({0,0,0,0},u""){}
         FeedbackText(Rectangle rect,std::u16string text):boxText(text,rect,3,18,&myFont){}
@@ -174,7 +175,7 @@ namespace RayJump
             bl = sepText[0];
             linePos = charPos = currentChar = total = 0;
             maxChar = text.size();
-            stop = stop2 =false;
+            stop = stop2 = finished = false;
             gr = re = u"";
             startTime = secondPassed = 0;
             wpm = 0;
@@ -182,6 +183,7 @@ namespace RayJump
         }
         void run()
         {
+            if(finished) return;
             if(maxChar == 0) maxChar = text.size();
             if(maxChar == 0)
                 return;
@@ -192,7 +194,7 @@ namespace RayJump
             if(linePos == sepTextSize - 1 && bl.empty())
             {
                 if(IsKeyDown(KEY_ENTER))
-                    restart();
+                    finished = true;
                 return;
             }
             if(stop)
@@ -207,6 +209,10 @@ namespace RayJump
         {
             if(startTime == 0)return 0;
             return std::max(ExtraRaylib::getTimeMS() - startTime,1LL * 1);
+        }
+        bool isFinished()
+        {
+            return finished;
         }
         void calculate()
         {
@@ -342,6 +348,14 @@ namespace RayJump
             FeedbackText fText = FeedbackText({50,200,300,100},u"suferință. Mircea Eliade");
             void run()
             {
+                if(fText.isFinished())
+                {
+                    if((IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)
+                        || IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL))
+                       && IsKeyPressed(KEY_ENTER))
+                        fText.restart();
+                    return;
+                }
                 player->setXPr(fText.getPrc());
                 fText.run();
                 roads.run();
@@ -353,12 +367,31 @@ namespace RayJump
             }
             void draw()
             {
+                if(!fText.isFinished())
+                    drawGame();
+                else
+                    drawFinish();
+            }
+            void drawGame()
+            {
                 roads.draw();
                 DrawTextEx(myFont,std::to_string(fText.getWPM()).c_str(),{0,0},18,1,BLACK);
                 std::string chestie = std::to_string(fText.getAccuracy());
                 chestie.insert(chestie.size()-2,".");
                 DrawTextEx(myFont,chestie.c_str(),{100,0},18,1,BLACK);
                 fText.draw();
+            }
+            void drawFinish()
+            {
+                Rectangle rect = {ScreenInfo.x + ScreenInfo.width*0.1f,ScreenInfo.y + ScreenInfo.height*0.1f,ScreenInfo.width*0.8f,ScreenInfo.height*0.8f};
+                DrawRectangleRec(rect,GRAY);
+                using ExtraRaylib::TxtAligned;
+                TxtAligned winMessage(&myFont,"You can type. Grats!",rect,50,10,18*2,GREEN);
+                TxtAligned accuracy(&myFont,"You can type. Grats!",rect,20,30,18,GREEN);
+                TxtAligned wpm(&myFont,"You can type. Grats!",rect,80,30,18,GREEN);
+                winMessage.draw();
+                accuracy.draw();
+                wpm.draw();
             }
         } game;
         class ColorPicker : public ExtraRaylib::ScreenWrapper
