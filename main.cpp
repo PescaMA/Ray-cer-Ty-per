@@ -216,21 +216,29 @@ namespace RayJump
         }
         void calculate()
         {
-            if ( startTime == 0) return;
+            if ( startTime == 0 || stop2) return;
             if(linePos == sepTextSize - 1 && bl.empty())
-            {
-                if(stop2)
-                    return;
-                stop2 = true;
-            }
+                stop2 = true; /// last calculation.
             if(secondPassed == getTime()/1000 && !stop2)
                 return;
             secondPassed ++ ;
             wpm = 1.0f*currentChar/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
             accuracy = 1.0f * currentChar / total * 10000;
         }
-        int getWPM() {return wpm;}
-        int getAccuracy() {return accuracy;}
+        const char* getWPM()
+        {
+            static std::string result;
+            result = (std::to_string(wpm) + " wpm");
+            return result.c_str();
+        }
+        const char* getAccuracy()
+        {
+            static std::string str;
+            str = std::to_string(accuracy);
+            str.insert(str.size()-2,".");
+            str += "% acc";
+            return str.c_str();
+        }
         void addChr()
         {
             char16_t c;
@@ -375,23 +383,23 @@ namespace RayJump
             void drawGame()
             {
                 roads.draw();
-                DrawTextEx(myFont,std::to_string(fText.getWPM()).c_str(),{0,0},18,1,BLACK);
-                std::string chestie = std::to_string(fText.getAccuracy());
-                chestie.insert(chestie.size()-2,".");
-                DrawTextEx(myFont,chestie.c_str(),{100,0},18,1,BLACK);
+                DrawTextEx(myFont,fText.getWPM(),{0,0},18,1,BLACK);
+                DrawTextEx(myFont,fText.getAccuracy(),{100,0},18,1,BLACK);
                 fText.draw();
             }
             void drawFinish()
             {
                 Rectangle rect = {ScreenInfo.x + ScreenInfo.width*0.1f,ScreenInfo.y + ScreenInfo.height*0.1f,ScreenInfo.width*0.8f,ScreenInfo.height*0.8f};
-                DrawRectangleRec(rect,GRAY);
+                DrawRectangleRec(rect,LIGHTGRAY);
+                Rectangle Header = {rect.x,rect.y,rect.width,rect.height*0.2f};
+                DrawRectangleRec(Header,YELLOW);
                 using ExtraRaylib::TxtAligned;
-                TxtAligned winMessage(&myFont,"You can type. Grats!",rect,50,10,18*2,GREEN);
-                TxtAligned accuracy(&myFont,"You can type. Grats!",rect,20,30,18,GREEN);
-                TxtAligned wpm(&myFont,"You can type. Grats!",rect,80,30,18,GREEN);
-                winMessage.draw();
-                accuracy.draw();
-                wpm.draw();
+                TxtAligned winMessage(&myFont,"You can type. Grats!",rect,50,10,36,GREEN);
+                TxtAligned accuracy(&myFont,fText.getWPM(),rect,20,30,20,BLACK);
+                TxtAligned wpm(&myFont,fText.getAccuracy(),rect,80,30,20,BLACK);
+                winMessage.draw(true);
+                accuracy.draw(true);
+                wpm.draw(true);
             }
         } game;
         class ColorPicker : public ExtraRaylib::ScreenWrapper
