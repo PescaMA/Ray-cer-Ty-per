@@ -9,12 +9,16 @@
 
 namespace RayJump
 {
-    std::map<std::string,double> settings;
+    std::map<std::string,float> settings;
     int const fps = 60;
     Rectangle ScreenInfo; /// used to center
     Texture2D CAR_ASSET_STRUCTURE;
     Texture2D CAR_ASSET_COLOR;
     Font myFont;
+    const char carNames[][30]={
+        "<- Tu (joc curent)",
+        "<- Jocul cel mai bun"
+    };
 
     class Loader
     {
@@ -40,6 +44,7 @@ namespace RayJump
             settings["PlayerR"] = 0;
             settings["PlayerG"] = 0;
             settings["PlayerB"] = 200;
+            settings["BestWPM"] = 10;
 
             ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
         }
@@ -58,7 +63,7 @@ namespace RayJump
         {
             std::ofstream fout("Text_files/settings.txt");
             if(!fout)return;
-            for(std::map<std::string,double>::iterator it=settings.begin();it!=settings.end();it++)
+            for(std::map<std::string,float>::iterator it=settings.begin();it!=settings.end();it++)
                 fout<<it->first<<' '<<it->second<<'\n';
 
         }
@@ -84,10 +89,12 @@ namespace RayJump
         float const y;
         float *screenWidth =nullptr;
         float roadWidth;
+        int wpm = 15;
+        int id;
 
         Color color = {0,222,0,255};
-        Car():y(0){}
-        Car(float y,float &screenWidth):y(y),screenWidth(&screenWidth){}
+        Car():y(0){;}
+        Car(float y,float &screenWidth,int id):y(y),screenWidth(&screenWidth),id(id){;}
         void run()
         {
             roadWidth = *screenWidth * 0.75;
@@ -104,16 +111,20 @@ namespace RayJump
         {
             return START + (roadWidth-WIDTH) * xPr;
         }
-        void draw()
+        void draw(bool isGameStarted = false)
         {
             DrawTexture(CAR_ASSET_COLOR,getPos(),y,color);
             DrawTexture(CAR_ASSET_STRUCTURE,getPos(),y,WHITE);
+            if(!isGameStarted){
+                DrawTextEx(myFont,carNames[id],{getPos() + WIDTH + 5,y + 15},18,1,BLACK);
+            }
         }
     }; ///non const statics need to be declared
     class Road
     {
         int const Ystart = 50;
         int Ylength = Car::HEIGHT + 5;
+        int const MAX_NR_OF_CARS = 2;
         int nrOfRoads = 1;
 
         int const Xstart = 40;
@@ -121,15 +132,29 @@ namespace RayJump
         std::vector <Car> cars;
         Road(int nr_of_cars)
         {
+            if(nr_of_cars > MAX_NR_OF_CARS)
+                nr_of_cars = MAX_NR_OF_CARS;
             nrOfRoads = nr_of_cars;
             for(int i=0;i<nr_of_cars;i++)
-                cars.emplace_back(Ystart + i*Ylength,ScreenInfo.width);
+                cars.emplace_back(Ystart + i*Ylength,ScreenInfo.width, i);
+            if(nr_of_cars >= 2)cars[1].wpm = settings["BestWPM"];
         }
         void run()
         {
             int sz = cars.size();
             for(int i=0; i<sz; i++)
                 cars[i].run();
+        }
+        void setCompletionPrc(int timeMS, int characterCount)
+        {
+            int const timeCorrection = 12000; /// /1000 /60 * 5 = miliseconds to seconds to minutes; words to characters
+            /// first car is the player and has variable wpm so we ignore it.
+            for(int i=1;i<cars.size();i++)
+            {
+                float characters =  std::round(1.0f * cars[i].wpm * timeMS / timeCorrection);
+                float prc = std::min(characters/characterCount, 1.0f); /// can't go more than 100%
+                cars[i].setXPr(prc);
+            }
         }
         int getCarRightClicked()
         {
@@ -139,12 +164,12 @@ namespace RayJump
                     return i;
             return -1;
         }
-        void draw()
+        void draw(bool isStarted = false)
         {
             DrawRectangle(Xstart,Ystart,cars[0].roadWidth,nrOfRoads*Ylength,GRAY);
             int sz = cars.size();
             for(int i=0; i<sz; i++)
-                cars[i].draw();
+                cars[i].draw(isStarted);
         }
     };
 
@@ -152,7 +177,8 @@ namespace RayJump
     {
         int linePos = 0; /// line position in separated text
         int charPos = 0;
-        int wpm = 0, accuracy = 10000;
+        float wpm = 0;
+        int accuracy = 10000;
         int total = 0;
         int maxChar,currentChar=0;
         std::u16string gr,re,bl;
@@ -164,6 +190,10 @@ namespace RayJump
         public:
         FeedbackText():FeedbackText({0,0,0,0},u""){}
         FeedbackText(Rectangle rect,std::u16string text):boxText(text,rect,3,18,&myFont){}
+        int get_character_count()
+        {
+            return maxChar;
+        }
         void setText(std::u16string text)
         {
             this->text = text;
@@ -210,9 +240,17 @@ namespace RayJump
             if(startTime == 0)return 0;
             return std::max(ExtraRaylib::getTimeMS() - startTime,1LL * 1);
         }
+        bool isStarted()
+        {
+            return startTime != 0;
+        }
         bool isFinished()
         {
             return finished;
+        }
+        bool isAtEnd()
+        {
+            return currentChar == maxChar;
         }
         void calculate()
         {
@@ -225,10 +263,11 @@ namespace RayJump
             wpm = 1.0f*currentChar/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
             accuracy = 1.0f * currentChar / total * 10000;
         }
+        float float_getWPM(){return wpm;}
         const char* getWPM()
         {
             static std::string result;
-            result = (std::to_string(wpm) + " wpm");
+            result = (std::to_string((int)std::round(wpm)) + " wpm");
             return result.c_str();
         }
         const char* getAccuracy()
@@ -353,17 +392,23 @@ namespace RayJump
         {
             public:
             Road roads = Road(2);
-            FeedbackText fText = FeedbackText({50,200,300,100},u"suferință. Mircea Eliade");
+            FeedbackText fText = FeedbackText({50,200,300,100},u"");
+            NormalGame(){fText.setText(u"suferință. Mircea Eliade");}
             void run()
             {
+                if((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_R))
+                    fText.restart();
                 if(fText.isFinished())
                 {
-                    if((IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)
-                        || IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL))
-                       && IsKeyPressed(KEY_ENTER))
+                    settings["BestWPM"] = std::max(fText.float_getWPM(), settings["BestWPM"]);
+                    roads.cars[1].wpm = settings["BestWPM"];
+                    if((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))
                         fText.restart();
                     return;
                 }
+                /// FORMULA : std::round(wpm * fText.getTime() * 0.000001f) * fText.get_character_count()  / 5
+                if(!fText.isAtEnd())
+                    roads.setCompletionPrc(fText.getTime(),fText.get_character_count());
                 player->setXPr(fText.getPrc());
                 fText.run();
                 roads.run();
@@ -382,7 +427,7 @@ namespace RayJump
             }
             void drawGame()
             {
-                roads.draw();
+                roads.draw(fText.isStarted());
                 DrawTextEx(myFont,fText.getWPM(),{0,0},18,1,BLACK);
                 DrawTextEx(myFont,fText.getAccuracy(),{100,0},18,1,BLACK);
                 fText.draw();
@@ -401,7 +446,7 @@ namespace RayJump
                 accuracy.draw(true);
                 wpm.draw(true);
             }
-        } game;
+        } *game = new NormalGame();
         class ColorPicker : public ExtraRaylib::ScreenWrapper
         {
             public:
@@ -426,7 +471,7 @@ namespace RayJump
         ExtraRaylib::ScreenWrapper* ScreenStuff::getScreen()
         {
             ExtraRaylib::ScreenWrapper *screen;
-            if(now == Sgame) screen = &game;
+            if(now == Sgame) screen = game;
             if(now == SRGBpick) screen = &colorPicker;
             if(now == Stitle) screen = &title;
 
@@ -437,10 +482,10 @@ namespace RayJump
         public:
             static void run()
             {
-                title.init();
-                currentScreen.setScreen(ScreenStuff::screens::Stitle);
-                player = &game.roads.cars[0];
                 loadSettings();
+                title.init();
+
+                currentScreen.setScreen(ScreenStuff::screens::Stitle);
                 colorPicker.setColor(player->color);
                 while(!WindowShouldClose())
                 {
@@ -469,6 +514,8 @@ namespace RayJump
             }
             static void loadSettings()
             {
+                 game = new NormalGame();
+                 player = &(game->roads.cars[0]);
                  player->color.r = settings["PlayerR"];
                  player->color.g = settings["PlayerG"];
                  player->color.b = settings["PlayerB"];

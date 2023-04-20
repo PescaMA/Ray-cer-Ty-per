@@ -5,6 +5,7 @@
 #include <random>   /// for randomized colors
 #include <chrono>   /// for time
 #include <string.h> /// for char functions
+#include <climits>
 #include <locale>
 #include <codecvt>
 int getLineCount(std::ifstream &fin)
@@ -41,6 +42,14 @@ void ignoreLines(std::ifstream &fin,int lineNr)
 }
 namespace ExtraRaylib
 {
+    bool isShiftDown()
+    {
+        return IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    }
+    bool isControlDown()
+    {
+        return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    }
     /// TO do: recode raylib.
     /************************************
               DIVERSE FUNCTIONS

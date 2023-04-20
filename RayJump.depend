@@ -7,14 +7,15 @@
 	<random>
 	<chrono>
 
-1680820149 source:/home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/main.cpp
+1681987012 source:/home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/main.cpp
 	<iostream>
 	<fstream>
-	<raylib.h>
+	"raylib.h"
 	<map>
 	<random>
 	<chrono>
 	<string.h>
+	"Headers/ExtraRaylib.h"
 
 1681934470 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\main.cpp
 	<iostream>
@@ -42,4 +43,16 @@
 	<chrono>
 	<map>
 	<string.h>
+
+1681981891 /home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/Headers/ExtraRaylib.h
+	<iostream>
+	<fstream>
+	<raylib.h>
+	<map>
+	<random>
+	<chrono>
+	<string.h>
+	<climits>
+	<locale>
+	<codecvt>
 

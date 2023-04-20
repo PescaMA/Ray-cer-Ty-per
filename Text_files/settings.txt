@@ -1,3 +1,4 @@
+BestWPM 10
 PlayerB 255
 PlayerG 0
 PlayerR 255
