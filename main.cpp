@@ -9,6 +9,7 @@
 
 namespace RayJump
 {
+
     std::map<std::string,float> settings;
     int const fps = 60;
     Rectangle ScreenInfo; /// used to center
@@ -45,6 +46,7 @@ namespace RayJump
             settings["PlayerG"] = 0;
             settings["PlayerB"] = 200;
             settings["BestWPM"] = 10;
+            settings["CopiedTextPos"] = -1;
 
             ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
         }
@@ -197,6 +199,7 @@ namespace RayJump
         void setText(std::u16string text)
         {
             this->text = text;
+            sepText.clear();
             setSepText();
             restart();
         }
@@ -393,7 +396,20 @@ namespace RayJump
             public:
             Road roads = Road(2);
             FeedbackText fText = FeedbackText({50,200,300,100},u"");
-            NormalGame(){fText.setText(u"suferință. Mircea Eliade");}
+            NormalGame(){
+                if(settings["CopiedTextPos"] > 0)
+                {
+                    std:: string copiedText;
+                    std::ifstream fin("Text_files/CopiedTxt.txt");
+                    if(!fin) fText.setText(u"Eroare");
+                    getline(fin,copiedText);
+                    std::u16string txt = utf8_to_u16(copiedText);
+                    fText.setText(txt);
+                    fText.restart();
+                }
+                else
+                    fText.setText(u"suferință. Mircea Eliade");
+            }
             void run()
             {
                 if((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_R))
@@ -406,7 +422,19 @@ namespace RayJump
                         fText.restart();
                     return;
                 }
-                /// FORMULA : std::round(wpm * fText.getTime() * 0.000001f) * fText.get_character_count()  / 5
+                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_V))
+                {
+                    std::string copiedText = GetClipboardText();
+                    std::ofstream fout("Text_files/CopiedTxt.txt");
+                    fout << copiedText;
+                    settings["CopiedTextPos"] = 1;
+                    fout.close();
+                    std::ifstream fin("Text_files/CopiedTxt.txt");
+                    getline(fin,copiedText);
+                    std::u16string txt = utf8_to_u16(copiedText);
+                    fText.setText(txt);
+                    fText.restart();
+                }
                 if(!fText.isAtEnd())
                     roads.setCompletionPrc(fText.getTime(),fText.get_character_count());
                 player->setXPr(fText.getPrc());
