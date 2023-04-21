@@ -37,7 +37,7 @@ std::string u16_to_utf8(const std::u16string& u16str) {
 }
 void ignoreLines(std::ifstream &fin,int lineNr)
 {
-    while(lineNr--)
+    while((lineNr--) > 0 )
         fin.ignore(LONG_MAX,'\n');
 }
 namespace ExtraRaylib

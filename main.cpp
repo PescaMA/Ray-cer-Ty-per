@@ -5,6 +5,7 @@
 #include <random>   /// for randomizing
 #include <chrono>   /// for time
 #include <string.h> /// for char functions
+#include <algorithm>
 #include "Headers/ExtraRaylib.h"
 
 namespace RayJump
@@ -224,7 +225,7 @@ namespace RayJump
             if(startTime == 0 && currentChar !=0)
                 startTime = ExtraRaylib::getTimeMS();
             eraseChr();
-            if(linePos == sepTextSize - 1 && bl.empty())
+            if(linePos == sepTextSize - 1 && bl.empty() && re.empty())
             {
                 if(IsKeyDown(KEY_ENTER))
                     finished = true;
@@ -258,7 +259,7 @@ namespace RayJump
         void calculate()
         {
             if ( startTime == 0 || stop2) return;
-            if(linePos == sepTextSize - 1 && bl.empty())
+            if(linePos == sepTextSize - 1 && bl.empty() && re.empty())
                 stop2 = true; /// last calculation.
             if(secondPassed == getTime()/1000 && !stop2)
                 return;
@@ -399,32 +400,76 @@ namespace RayJump
             NormalGame(){
                 if(settings["CopiedTextPos"] > 0)
                 {
-                    std:: string copiedText;
+                    std::string copiedText = "a"; /// WHATT??????????????????????????????????????????????????????????????????????????????????
                     std::ifstream fin("Text_files/CopiedTxt.txt");
-                    if(!fin) fText.setText(u"Eroare");
-                    getline(fin,copiedText);
+                    fin.close();
+                    fin.open("Text_files/CopiedTxt.txt");
+
+                    if(!fin)
+                    {
+                        fText.setText(u"Eroare citire text copiat");
+                        return;
+                    }
+                    if(settings["CopiedTextPos"] > getLineCount(fin))
+                    {
+                        fText.setText(u"Eroare prea multe linii in text copiat");
+                        return;
+                    }
+                    std::cout << settings["CopiedTextPos"] << " A ";
+                    ///ignoreLines(fin,settings["CopiedTextPos"]-1);
+                    while(fin>>copiedText)std::cout << "HMM";
+                    std::cout << copiedText.size() << ' ' ;
                     std::u16string txt = utf8_to_u16(copiedText);
+                    std::cout << txt.size() << ' ' << copiedText.size();
                     fText.setText(txt);
+                    std::cout << "WHAT\n\n\n";
                     fText.restart();
+                    std::cout << "WHAT\n\n\n";
+                    exit(1);
                 }
                 else
                     fText.setText(u"suferință. Mircea Eliade");
             }
             void run()
             {
-                if((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_R))
+                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
                     fText.restart();
                 if(fText.isFinished())
                 {
                     settings["BestWPM"] = std::max(fText.float_getWPM(), settings["BestWPM"]);
                     roads.cars[1].wpm = settings["BestWPM"];
                     if((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))
+                    {
                         fText.restart();
+                        std::ifstream fin("Text_files/CopiedTxt.txt");
+                        if(settings["CopiedTextPos"] < getLineCount(fin))
+                        {
+                            std::string copiedText;
+                            ignoreLines(fin,settings["CopiedTextPos"]);
+                            settings["CopiedTextPos"] ++;
+                            getline(fin,copiedText);
+                            std::u16string txt = utf8_to_u16(copiedText);
+                            fText.setText(txt);
+                            fText.restart();
+                        }
+                        else
+                        {
+                            settings["CopiedTextPos"] = -1;
+                            fText.setText(u"AAasdfasdfsa");
+                        }
+
+                        fin.close();
+
+                    }
+
                     return;
                 }
                 if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_V))
                 {
                     std::string copiedText = GetClipboardText();
+                    /// windows problem : adds carriage return (ascii 13 or \r).
+                    copiedText.erase(remove(copiedText.begin(), copiedText.end(), '\r'), copiedText.end());
+                    /// note: remove just moves the text to the left when finding the character
                     std::ofstream fout("Text_files/CopiedTxt.txt");
                     fout << copiedText;
                     settings["CopiedTextPos"] = 1;
@@ -434,6 +479,7 @@ namespace RayJump
                     std::u16string txt = utf8_to_u16(copiedText);
                     fText.setText(txt);
                     fText.restart();
+                    fin.close();
                 }
                 if(!fText.isAtEnd())
                     roads.setCompletionPrc(fText.getTime(),fText.get_character_count());

@@ -1,1 +1,3 @@
-fText.setText(u"suferință. Mircea Eliade");
+;
+
+                    if(!fin)
