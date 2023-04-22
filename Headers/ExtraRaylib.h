@@ -8,17 +8,40 @@
 #include <climits>
 #include <locale>
 #include <codecvt>
+char16_t flattenString(char16_t c)
+{
+    const std::vector<std::u16string> a = {u"aâäàáåãāăą",
+    u"AÂÄÀÁÅÃĀĂĄ",
+    u"sßšșş",
+    u"SẞŠȘŞ",
+    u"tţțť",
+    u"TŢȚŤ",
+    u"iîïìíīĩī",
+    u"IÎÏÌÍĪĨ"};
+    for(int i=0;i<a.size();i++)
+    {
+        for(int j=0;j<a[i].size();j++)
+            if(a[i][j] == c) return a[i][0];
+    }
+    return c;
+}
 int getLineCount(std::ifstream &fin)
 {
+    int initPos = fin.tellg();
+    fin.seekg(0);
     int lines = 0;
     while(fin.ignore(LONG_MAX, '\n'))
         lines++ ;
+    fin.clear();
+    fin.seekg(initPos);
     return lines;
 }
 int getLineCount(std::string filePath)
 {
     std::ifstream fin(filePath);
-    return getLineCount(fin);
+    int result = getLineCount(fin);
+    fin.close();
+    return result;
 }
 std::u32string utf8_to_u32(std::string const& utf8) {
     std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> cnv;
@@ -42,6 +65,12 @@ void ignoreLines(std::ifstream &fin,int lineNr)
 }
 namespace ExtraRaylib
 {
+    void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
+    {
+        /// not entirely sure what all the parameters mean but seems to work.
+        NPatchInfo ninePatchInfo = { drawnPart, 0, 0, 0, 0, NPATCH_NINE_PATCH };
+        DrawTextureNPatch(asset, ninePatchInfo, destination, {0,0}, 0.0f, WHITE);
+    }
     bool isShiftDown()
     {
         return IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
@@ -208,12 +237,6 @@ namespace ExtraRaylib
                 ExtraRaylib::drawtextUnicode(*font,sepText[i+linePos].c_str(),{rect.x,rect.y+i*font_size},font_size,1,BLACK);
         }
     };
-    void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
-    {
-        /// not entirely sure what all the parameters mean but seems to work.
-        NPatchInfo ninePatchInfo = { drawnPart, 0, 0, 0, 0, NPATCH_NINE_PATCH };
-        DrawTextureNPatch(asset, ninePatchInfo, destination, {0,0}, 0.0f, WHITE);
-    }
     double distSquare(int x1,int y1, int x2,int y2)
     {
         return (x1-x2) * (x1-x2) + (y1-y2) * (y1-y2);

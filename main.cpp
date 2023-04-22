@@ -7,10 +7,12 @@
 #include <string.h> /// for char functions
 #include <algorithm>
 #include "Headers/ExtraRaylib.h"
-
+#include "Headers/TexteHardCoded.h"
+const extern std::map <std::string,std::vector<std::string>> COUNTRY_TEXT;
+const bool soTrue = true;
 namespace RayJump
 {
-
+    auto currentLanguage = COUNTRY_TEXT.begin();
     std::map<std::string,float> settings;
     int const fps = 60;
     Rectangle ScreenInfo; /// used to center
@@ -28,7 +30,6 @@ namespace RayJump
         void load()
         {
             srand(ExtraRaylib::getTimeMS()); /// setting the random seed to current time
-
             SetConfigFlags(FLAG_WINDOW_RESIZABLE);
             defaultSettings();
             readSettings();
@@ -60,6 +61,7 @@ namespace RayJump
             double val;
             while(fin>>name>>val)
                 settings[name]=val;
+            fin.close();
             ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
         }
         void changeSettings()
@@ -67,8 +69,7 @@ namespace RayJump
             std::ofstream fout("Text_files/settings.txt");
             if(!fout)return;
             for(std::map<std::string,float>::iterator it=settings.begin();it!=settings.end();it++)
-                fout<<it->first<<' '<<it->second<<'\n';
-
+                fout<<(it->first)<<' '<<(it->second)<<'\n';
         }
         void unload()
         {
@@ -90,29 +91,22 @@ namespace RayJump
 
         float xPr = 0;
         float const y;
-        float *screenWidth =nullptr;
-        float roadWidth;
         int wpm = 15;
         int id;
 
         Color color = {0,222,0,255};
         Car():y(0){;}
-        Car(float y,float &screenWidth,int id):y(y),screenWidth(&screenWidth),id(id){;}
+        Car(float y,int id):y(y),id(id){;}
         void run()
-        {
-            roadWidth = *screenWidth * 0.75;
-        }
+        {true;}
         bool rightClicked()
         {
             return IsMouseButtonDown(1) && CheckCollisionPointRec(GetMousePosition(),{getPos(),y,WIDTH,HEIGHT});
         }
-        void setXPr(float prc)
-        {
-            xPr = prc;
-        }
         float getPos()
         {
-            return START + (roadWidth-WIDTH) * xPr;
+            int roadWidth = ScreenInfo.width - START*2;
+            return START + std::max((roadWidth-WIDTH),0) * xPr;
         }
         void draw(bool isGameStarted = false)
         {
@@ -129,6 +123,7 @@ namespace RayJump
         int Ylength = Car::HEIGHT + 5;
         int const MAX_NR_OF_CARS = 2;
         int nrOfRoads = 1;
+        int roadWidth;
 
         int const Xstart = 40;
         public:
@@ -139,11 +134,12 @@ namespace RayJump
                 nr_of_cars = MAX_NR_OF_CARS;
             nrOfRoads = nr_of_cars;
             for(int i=0;i<nr_of_cars;i++)
-                cars.emplace_back(Ystart + i*Ylength,ScreenInfo.width, i);
+                cars.emplace_back(Ystart + i*Ylength, i);
             if(nr_of_cars >= 2)cars[1].wpm = settings["BestWPM"];
         }
         void run()
         {
+            roadWidth = ScreenInfo.width - Car::START*2;
             int sz = cars.size();
             for(int i=0; i<sz; i++)
                 cars[i].run();
@@ -156,7 +152,7 @@ namespace RayJump
             {
                 float characters =  std::round(1.0f * cars[i].wpm * timeMS / timeCorrection);
                 float prc = std::min(characters/characterCount, 1.0f); /// can't go more than 100%
-                cars[i].setXPr(prc);
+                cars[i].xPr=prc;
             }
         }
         int getCarRightClicked()
@@ -169,7 +165,7 @@ namespace RayJump
         }
         void draw(bool isStarted = false)
         {
-            DrawRectangle(Xstart,Ystart,cars[0].roadWidth,nrOfRoads*Ylength,GRAY);
+            DrawRectangle(Xstart,Ystart,roadWidth,nrOfRoads*Ylength,GRAY);
             int sz = cars.size();
             for(int i=0; i<sz; i++)
                 cars[i].draw(isStarted);
@@ -177,26 +173,21 @@ namespace RayJump
     };
 
     class FeedbackText : public ExtraRaylib::boxText
-    {
+    {public:
         int linePos = 0; /// line position in separated text
         int charPos = 0;
         float wpm = 0;
         int accuracy = 10000;
         int total = 0;
-        int maxChar,currentChar=0;
         std::u16string gr,re,bl;
         bool stop = false;
         bool stop2 = false;
-        long long startTime = 0;
         int secondPassed = 0;
+        long long startTime = 0;
+        int maxChar,currentChar=0;
         bool finished = false;
-        public:
         FeedbackText():FeedbackText({0,0,0,0},u""){}
         FeedbackText(Rectangle rect,std::u16string text):boxText(text,rect,3,18,&myFont){}
-        int get_character_count()
-        {
-            return maxChar;
-        }
         void setText(std::u16string text)
         {
             this->text = text;
@@ -222,18 +213,16 @@ namespace RayJump
             if(maxChar == 0)
                 return;
             calculate();
+            eraseChr();
             if(startTime == 0 && currentChar !=0)
                 startTime = ExtraRaylib::getTimeMS();
-            eraseChr();
             if(linePos == sepTextSize - 1 && bl.empty() && re.empty())
             {
                 if(IsKeyDown(KEY_ENTER))
                     finished = true;
                 return;
             }
-            if(stop)
-                return;
-            addChr();
+            handleKeyPress();
         }
         float getPrc()
         {
@@ -244,21 +233,12 @@ namespace RayJump
             if(startTime == 0)return 0;
             return std::max(ExtraRaylib::getTimeMS() - startTime,1LL * 1);
         }
-        bool isStarted()
-        {
-            return startTime != 0;
-        }
-        bool isFinished()
-        {
-            return finished;
-        }
-        bool isAtEnd()
-        {
+        bool isAtEnd(){
             return currentChar == maxChar;
         }
         void calculate()
         {
-            if ( startTime == 0 || stop2) return;
+            if (!startTime || stop2) return;
             if(linePos == sepTextSize - 1 && bl.empty() && re.empty())
                 stop2 = true; /// last calculation.
             if(secondPassed == getTime()/1000 && !stop2)
@@ -267,7 +247,6 @@ namespace RayJump
             wpm = 1.0f*currentChar/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
             accuracy = 1.0f * currentChar / total * 10000;
         }
-        float float_getWPM(){return wpm;}
         const char* getWPM()
         {
             static std::string result;
@@ -282,15 +261,15 @@ namespace RayJump
             str += "% acc";
             return str.c_str();
         }
-        void addChr()
+        void handleKeyPress()
         {
             char16_t c;
             while((c = GetCharPressed()) && !stop)
             {
-                ///std::cout << c << ' ' << sepText[linePos][charPos] << '\n';
-                if(currentChar == 0 && c != sepText[linePos][charPos])
+                c = flattenString(c);
+                if(currentChar == 0 && c != flattenString(sepText[linePos][charPos]))
                     continue;
-                if(c == sepText[linePos][charPos] && re.empty())
+                if(c == flattenString(sepText[linePos][charPos]) && re.empty())
                 {
                     gr+=bl[0];
                     currentChar++;
@@ -369,27 +348,28 @@ namespace RayJump
         }currentScreen;
         class veryUsefulAndProfessionalTitleScreenWithJustTheName : public ExtraRaylib::ScreenWrapper
         {
-            ExtraRaylib::TxtAligned title;
-            ExtraRaylib::TxtAligned start;
+            Texture2D img;
+            Rectangle imageRect = {0,0,865,553};
+            float aspectRation = 865.0f / 553;
             public:
             void init()
             {
-                title = ExtraRaylib::TxtAligned(&myFont,"RayJump",ScreenInfo,50,20,18*3,BLACK);
-                start = ExtraRaylib::TxtAligned(&myFont,"- Press any button to start -",ScreenInfo,50,70,18,RED);
+                img  = LoadTexture("Images/title.png");
             }
             void run()
             {
-                title.align();
-                start.align();
                 if(GetKeyPressed() || ExtraRaylib::getSpecialKeyDown()!=-1)
                     currentScreen.setScreen(ScreenStuff::screens::Sgame);
             }
             void draw()
             {
                 ClearBackground(RAYWHITE);
-                title.draw();
-                start.draw();
-
+                Rectangle rectNicon = ScreenInfo;
+                rectNicon.width = std::min(rectNicon.width,rectNicon.height * aspectRation);
+                rectNicon.height = std::min(rectNicon.height,rectNicon.width / aspectRation);
+                rectNicon.x = ScreenInfo.width/2 - rectNicon.width/2;
+                rectNicon.y = ScreenInfo.height/2 - rectNicon.height/2;
+                ExtraRaylib::drawTextureDest(img,imageRect,rectNicon);
             }
         }title;
         class NormalGame : public ExtraRaylib::ScreenWrapper
@@ -400,11 +380,8 @@ namespace RayJump
             NormalGame(){
                 if(settings["CopiedTextPos"] > 0)
                 {
-                    std::string copiedText = "a"; /// WHATT??????????????????????????????????????????????????????????????????????????????????
+                    std::string copiedText = "basicThing";
                     std::ifstream fin("Text_files/CopiedTxt.txt");
-                    fin.close();
-                    fin.open("Text_files/CopiedTxt.txt");
-
                     if(!fin)
                     {
                         fText.setText(u"Eroare citire text copiat");
@@ -415,34 +392,31 @@ namespace RayJump
                         fText.setText(u"Eroare prea multe linii in text copiat");
                         return;
                     }
-                    std::cout << settings["CopiedTextPos"] << " A ";
-                    ///ignoreLines(fin,settings["CopiedTextPos"]-1);
-                    while(fin>>copiedText)std::cout << "HMM";
-                    std::cout << copiedText.size() << ' ' ;
+                    std::cout << "line in file reading: " << settings["CopiedTextPos"] << "\n";
+                    ignoreLines(fin,settings["CopiedTextPos"]-1);
+                    getline(fin,copiedText);
+
                     std::u16string txt = utf8_to_u16(copiedText);
-                    std::cout << txt.size() << ' ' << copiedText.size();
                     fText.setText(txt);
-                    std::cout << "WHAT\n\n\n";
                     fText.restart();
-                    std::cout << "WHAT\n\n\n";
-                    exit(1);
                 }
                 else
                     fText.setText(u"suferință. Mircea Eliade");
             }
             void run()
             {
-                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
-                    fText.restart();
-                if(fText.isFinished())
+                if(soTrue)
+                    if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
+                        fText.restart(); /// delete dis ltr (debug only)
+                if(fText.finished)
                 {
-                    settings["BestWPM"] = std::max(fText.float_getWPM(), settings["BestWPM"]);
+                    settings["BestWPM"] = std::max(fText.wpm, settings["BestWPM"]);
                     roads.cars[1].wpm = settings["BestWPM"];
                     if((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))
                     {
                         fText.restart();
                         std::ifstream fin("Text_files/CopiedTxt.txt");
-                        if(settings["CopiedTextPos"] < getLineCount(fin))
+                        if(settings["CopiedTextPos"] < getLineCount(fin) && settings["CopiedTextPos"]>0)
                         {
                             std::string copiedText;
                             ignoreLines(fin,settings["CopiedTextPos"]);
@@ -455,23 +429,42 @@ namespace RayJump
                         else
                         {
                             settings["CopiedTextPos"] = -1;
-                            fText.setText(u"AAasdfasdfsa");
+                            std::string randomTxt = (currentLanguage->second)[rand()%((currentLanguage->second).size())];
+                            fText.setText(utf8_to_u16(randomTxt));
                         }
-
                         fin.close();
-
                     }
-
                     return;
                 }
                 if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_V))
                 {
                     std::string copiedText = GetClipboardText();
+                    copiedText.length();
                     /// windows problem : adds carriage return (ascii 13 or \r).
                     copiedText.erase(remove(copiedText.begin(), copiedText.end(), '\r'), copiedText.end());
                     /// note: remove just moves the text to the left when finding the character
                     std::ofstream fout("Text_files/CopiedTxt.txt");
-                    fout << copiedText;
+                    char tok[copiedText.size() + 5];
+                    strcpy(tok,copiedText.c_str());
+                    char *p = strtok(tok,"\n");
+                    bool ePrimul = true;
+                    while(p)
+                    {
+                        bool pp = false;
+                        int n = strlen(p);
+                        for(int i=0;i<n;i++)
+                            if(p[i] != ' ')
+                                pp = true;
+                        if(pp)
+                        {
+                            if(!ePrimul)
+                                fout << '\n';
+                            fout << p;
+                            ePrimul = false;
+                        }
+
+                        p = strtok(NULL,"\n");
+                    }
                     settings["CopiedTextPos"] = 1;
                     fout.close();
                     std::ifstream fin("Text_files/CopiedTxt.txt");
@@ -482,8 +475,8 @@ namespace RayJump
                     fin.close();
                 }
                 if(!fText.isAtEnd())
-                    roads.setCompletionPrc(fText.getTime(),fText.get_character_count());
-                player->setXPr(fText.getPrc());
+                    roads.setCompletionPrc(fText.getTime(),fText.maxChar);
+                player->xPr=fText.getPrc();
                 fText.run();
                 roads.run();
                 int nr = roads.getCarRightClicked();
@@ -494,14 +487,14 @@ namespace RayJump
             }
             void draw()
             {
-                if(!fText.isFinished())
+                if(!fText.finished)
                     drawGame();
                 else
                     drawFinish();
             }
             void drawGame()
             {
-                roads.draw(fText.isStarted());
+                roads.draw(fText.startTime);
                 DrawTextEx(myFont,fText.getWPM(),{0,0},18,1,BLACK);
                 DrawTextEx(myFont,fText.getAccuracy(),{100,0},18,1,BLACK);
                 fText.draw();

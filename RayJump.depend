@@ -17,7 +17,7 @@
 	<string.h>
 	"Headers/ExtraRaylib.h"
 
-1682096494 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\main.cpp
+1682124876 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\main.cpp
 	<iostream>
 	<fstream>
 	"raylib.h"
@@ -27,8 +27,9 @@
 	<string.h>
 	<algorithm>
 	"Headers/ExtraRaylib.h"
+	"Headers/TexteHardCoded.h"
 
-1682081599 d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\headers\extraraylib.h
+1682124114 d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\headers\extraraylib.h
 	<iostream>
 	<fstream>
 	<raylib.h>
@@ -57,4 +58,8 @@
 	<climits>
 	<locale>
 	<codecvt>
+
+1682120369 d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\headers\textehardcoded.h
+	<string>
+	<map>
 
