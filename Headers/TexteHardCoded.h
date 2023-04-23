@@ -1,7 +1,7 @@
 #include <string>
 #include <map>
-///typedef std::map <std::string,std::vector<std::string>> CountryMap;
-const std::map <std::string,std::vector<std::string>> COUNTRY_TEXT =
+typedef std::map <std::string,std::vector<std::string>> CountryMap;
+const CountryMap COUNTRY_TEXT =
 {
     {
         "english",{

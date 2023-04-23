@@ -45,6 +45,7 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="Headers/ExtraRaylib.h" />
+		<Unit filename="Headers/TexteHardCoded.h" />
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<code_completion />

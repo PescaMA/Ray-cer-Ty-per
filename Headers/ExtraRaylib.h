@@ -1,16 +1,16 @@
-#include <iostream> /// for errors
+#include <iostream> /// for strings and errors
 #include <fstream>  /// for saving/loading data
 #include <raylib.h> /// for GUI
-#include <map>      /// for settings
-#include <random>   /// for randomized colors
+#include <map>      /// for maps
 #include <chrono>   /// for time
 #include <string.h> /// for char functions
-#include <climits>
-#include <locale>
-#include <codecvt>
+#include <climits>  /// for LONG_MAX
+#include <locale>   /// for transformation between string and u16string
+#include <codecvt>  /// for transformation between string and u16string
 char16_t flattenString(char16_t c)
 {
-    const std::vector<std::u16string> a = {u"aâäàáåãāăą",
+    /// gets rid of some diacritics, returning base ascii
+    const std::vector<std::u16string> diacritics = {u"aâäàáåãāăą",
     u"AÂÄÀÁÅÃĀĂĄ",
     u"sßšșş",
     u"SẞŠȘŞ",
@@ -18,10 +18,10 @@ char16_t flattenString(char16_t c)
     u"TŢȚŤ",
     u"iîïìíīĩī",
     u"IÎÏÌÍĪĨ"};
-    for(int i=0;i<a.size();i++)
+    for(int i=0;i<diacritics.size();i++)
     {
-        for(int j=0;j<a[i].size();j++)
-            if(a[i][j] == c) return a[i][0];
+        for(int j=0;j<diacritics[i].size();j++)
+            if(diacritics[i][j] == c) return diacritics[i][0];
     }
     return c;
 }
@@ -79,14 +79,11 @@ namespace ExtraRaylib
     {
         return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     }
-    /// TO do: recode raylib.
     /************************************
               DIVERSE FUNCTIONS
     ************************************/
     int getSpecialKeyDown()
     {
-        /// warning: slow function probably
-        /// DO NOT QUESTION MASTER RAYLIB
         for(int i=256;i<=301;i++)
             if(IsKeyDown(i))
                 return i;
@@ -95,8 +92,14 @@ namespace ExtraRaylib
                 return i;
         return -1;
     }
-    void drawtextUnicode(Font font, std::u16string text,Vector2 position, int font_size,int spacing,Color color)
+    void drawtextUnicode(Font font, std::u16string text,Vector2 position, int font_size,int spacing,Color color,Color backgroundColor)
     {
+        /// font has to be monospaced
+        if(text.size() == 0) return;
+        std::string ch;
+        ch+=text[0];
+        float charSize = MeasureTextEx(font,ch.c_str(),font_size,spacing).x;
+        DrawRectangle(position.x,position.y,text.size() * charSize ,font_size,backgroundColor);
         while(!text.empty())
         {
             DrawTextCodepoint(font,text[0],position,font_size,color);
@@ -105,6 +108,7 @@ namespace ExtraRaylib
             position.x += MeasureTextEx(font,a.c_str(),font_size,spacing).x;
             text.erase(0,1);
         }
+
     }
     float MeasureTextUnicode(Font font,std::u16string text,int font_size,float spacing)
     { /// Font must be monospaced!
@@ -153,15 +157,18 @@ namespace ExtraRaylib
         Font *font; /// pointer so we can load it later
         float x,y,fontSize;
         char text[105];
-        Color color;
+        Color color,backgroundColor;
         Txt(){}
-        Txt(Font *font,char const text[105],int x,int y,int fontSize,Color color)
-        :font(font),x(x),y(y),fontSize(fontSize),color(color)
+        Txt(Font *font,char const text[105],int x,int y,int fontSize,Color color,Color backgroundColor)
+        :font(font),x(x),y(y),fontSize(fontSize),color(color),backgroundColor(backgroundColor)
         {
             strcpy(this->text,text);
         }
         void draw(bool shouldUnderline=false)
         {
+            Rectangle background = {x,y,MeasureTextEx(*font,text,fontSize,1).x,MeasureTextEx(*font,text,fontSize,1).y};
+            DrawRectangleRec(background,backgroundColor);
+
             DrawTextEx(*font,text,{x,y},fontSize,1,color);
             if(shouldUnderline)
                 underline();
@@ -171,7 +178,7 @@ namespace ExtraRaylib
             int len=MeasureTextEx(*font,text,fontSize,1).x;
             Vector2 init= {x,y+fontSize};
             Vector2 endp= {x+len,y+fontSize};
-            DrawLineEx(init,endp,fontSize/20+1,color);
+            DrawLineEx(init,endp,fontSize/10+1,color);
         }
     };
     struct TxtAligned : public Txt
@@ -179,8 +186,9 @@ namespace ExtraRaylib
         float xPercent,yPercent;
         Rectangle *container;
         TxtAligned(){}
-        TxtAligned(Font *font,char const text[105],Rectangle &container,int xPercent,int yPercent,int fontSize,Color color)
-        :Txt(font,text,container.x,container.y,fontSize,color),xPercent(xPercent/100.0),yPercent(yPercent/100.0)
+        TxtAligned(Font *font,char const text[105],Rectangle &container,int xPercent,int yPercent,int fontSize,Color color,Color backgroundColor)
+        :Txt(font,text,container.x,container.y,fontSize,color,backgroundColor),
+        xPercent(xPercent/100.0),yPercent(yPercent/100.0)
         {
             this->container = &container;
             this->align();
@@ -234,7 +242,7 @@ namespace ExtraRaylib
                 setSepText();
             DrawRectangleRec(rect,WHITE);
             for(int i=0;i<MAX_LINES && i+linePos<sepTextSize;i++)
-                ExtraRaylib::drawtextUnicode(*font,sepText[i+linePos].c_str(),{rect.x,rect.y+i*font_size},font_size,1,BLACK);
+                ExtraRaylib::drawtextUnicode(*font,sepText[i+linePos].c_str(),{rect.x,rect.y+i*font_size},font_size,1,BLACK,BLANK);
         }
     };
     double distSquare(int x1,int y1, int x2,int y2)

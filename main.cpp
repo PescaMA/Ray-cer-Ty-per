@@ -5,14 +5,14 @@
 #include <random>   /// for randomizing
 #include <chrono>   /// for time
 #include <string.h> /// for char functions
-#include <algorithm>
+#include <algorithm>/// for remove, erase
 #include "Headers/ExtraRaylib.h"
 #include "Headers/TexteHardCoded.h"
-const extern std::map <std::string,std::vector<std::string>> COUNTRY_TEXT;
+const extern CountryMap COUNTRY_TEXT;
 const bool soTrue = true;
 namespace RayJump
 {
-    auto currentLanguage = COUNTRY_TEXT.begin();
+    CountryMap::const_iterator currentLanguage = COUNTRY_TEXT.begin();
     std::map<std::string,float> settings;
     int const fps = 60;
     Rectangle ScreenInfo; /// used to center
@@ -31,9 +31,11 @@ namespace RayJump
         {
             srand(ExtraRaylib::getTimeMS()); /// setting the random seed to current time
             SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+
             defaultSettings();
             readSettings();
             InitWindow(ScreenInfo.width,ScreenInfo.height,"Rayjump");
+            SetWindowMinSize(500,375);
             myFont = LoadFontEx("liberation_mono.ttf", 18*4, NULL, 1000);
             SetExitKey(0);
             CAR_ASSET_STRUCTURE = LoadTexture("Images/carStructure.png");
@@ -315,9 +317,11 @@ namespace RayJump
         {
             if(bl==u"" && !stop && linePos<sepTextSize)
                 bl = sepText[linePos];
-            ExtraRaylib::drawtextUnicode(*font,gr,{rect.x,rect.y},font_size,1,GREEN);
-            ExtraRaylib::drawtextUnicode(*font,re,{rect.x + ExtraRaylib::MeasureTextUnicode(*font,gr,font_size,1),rect.y},font_size,1,RED);
-            ExtraRaylib::drawtextUnicode(*font,bl,{rect.x + ExtraRaylib::MeasureTextUnicode(*font,(gr + re),font_size,1),rect.y},font_size,1,BLACK);
+            Color LIGHT_GREEN = {115, 246, 155,255};
+            Color LIGT_RED = {250, 181, 181, 255};
+            ExtraRaylib::drawtextUnicode(*font,gr,{rect.x,rect.y},font_size,1,GREEN,BLANK);
+            ExtraRaylib::drawtextUnicode(*font,re,{rect.x + ExtraRaylib::MeasureTextUnicode(*font,gr,font_size,1),rect.y},font_size,1,BLACK,LIGT_RED);
+            ExtraRaylib::drawtextUnicode(*font,bl,{rect.x + ExtraRaylib::MeasureTextUnicode(*font,(gr + re),font_size,1),rect.y},font_size,1,BLACK,BLANK);
         }
         void draw()
         {
@@ -328,7 +332,7 @@ namespace RayJump
                 setSepText();
             drawDominantLine();
             for(int i=1;i<MAX_LINES && i+linePos < sepTextSize;i++)
-            ExtraRaylib::drawtextUnicode(*font, sepText[i+linePos],{rect.x,rect.y + font_size*i},font_size,1,BLACK);
+            ExtraRaylib::drawtextUnicode(*font, sepText[i+linePos],{rect.x,rect.y + font_size*i},font_size,1,BLACK,BLANK);
         }
     };
 
@@ -506,9 +510,9 @@ namespace RayJump
                 Rectangle Header = {rect.x,rect.y,rect.width,rect.height*0.2f};
                 DrawRectangleRec(Header,YELLOW);
                 using ExtraRaylib::TxtAligned;
-                TxtAligned winMessage(&myFont,"You can type. Grats!",rect,50,10,36,GREEN);
-                TxtAligned accuracy(&myFont,fText.getWPM(),rect,20,30,20,BLACK);
-                TxtAligned wpm(&myFont,fText.getAccuracy(),rect,80,30,20,BLACK);
+                TxtAligned winMessage(&myFont,"You can type. Grats!",rect,50,10,36,GREEN,BLANK);
+                TxtAligned accuracy(&myFont,fText.getWPM(),rect,20,30,20,BLACK,BLANK);
+                TxtAligned wpm(&myFont,fText.getAccuracy(),rect,80,30,20,BLACK,BLANK);
                 winMessage.draw(true);
                 accuracy.draw(true);
                 wpm.draw(true);
