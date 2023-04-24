@@ -1,7 +1,7 @@
-BestWPM 705.882
-CopiedTextPos -1
+BestWPM 80
+CopiedTextPos 12
 PlayerB 200
 PlayerG 0
 PlayerR 255
 ScreenHeight 508
-ScreenWidth 1108
+ScreenWidth 500

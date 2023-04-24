@@ -349,7 +349,79 @@ namespace RayJump
             ExtraRaylib::drawtextUnicode(*font, sepText[i+linePos],{rect.x,rect.y + font_size*i},font_size,1,BLACK,BLANK);
         }
     };
+    class savedText
+    {
+    public:
+        static std::u16string getText()
+        {
+            if(settings["CopiedTextPos"] < 1)
+                return getRandomText();
+            std::ifstream fin("Text_files/CopiedTxt.txt");
+            if(!fin)
+                return u"Eroare citire text copiat";
+            int lines = getLineCount(fin);
+            if(settings["CopiedTextPos"] > lines)
+            {
+                settings["CopiedTextPos"] = -1;
+                fin.close();
+                return getRandomText();
+            }
+            std::string copiedText;
+            ignoreLines(fin,settings["CopiedTextPos"]-1);
+            getline(fin,copiedText);
+            settings["CopiedTextPos"]++;
+            if(copiedText.empty())
+                return u"Empty line.";
+            return utf8_to_u16(copiedText);
+        }
+        static std::u16string getRandomText()
+        {
+            std::string randomTxt = (currentLanguage->second)[rand()%((currentLanguage->second).size())];
+            return (utf8_to_u16(randomTxt));
+        }
+        static void saveClipboardText()
+        {
+            std::string copiedText = GetClipboardText();
+            _formatClipboard(copiedText);
+            settings["CopiedTextPos"] = 1;
+            std::ofstream fout("Text_files/CopiedTxt.txt");
+            fout << copiedText;
+            fout.close();
+        }
+        static void _formatClipboard(std::string &text)
+        {
+            text.erase(remove(text.begin(), text.end(), '\r'), text.end());
+            /// windows problem : adds carriage return (ascii 13 or \r).
+            /// note: remove just moves the text to the left when finding the character
 
+            char tok[text.size() + 5]; /// char array for strtok
+            strcpy(tok,text.c_str());
+            text.clear();
+            char *p = strtok(tok,"\n");
+            bool firstLine = true;
+            while(p)
+            {
+                int n = strlen(p);
+                bool goodFormat = false;
+                int i;
+                for(i=0;i<n;i++)
+                    if(p[i] != ' ')
+                    {
+                        goodFormat = true; /// if line isn't filled with just spaces
+                        break;
+                    }
+                if(goodFormat)
+                {
+                    if(firstLine)
+                        firstLine = false;
+                    else
+                        text+='\n';
+                    text+=(p+i);
+                }
+                p = strtok(NULL,"\n");
+            }
+        }
+    };
 
     namespace ScreenManaging
     {
@@ -357,7 +429,7 @@ namespace RayJump
         class ScreenStuff
         {
             public:
-            enum screens{Sgame,SRGBpick,Stitle} now = Sgame;
+            enum screens{Sgame,SRGBpick,Stitle,Shelp} now = Sgame;
             void setScreen(screens screen)
             {
                 now = screen;
@@ -367,8 +439,8 @@ namespace RayJump
         class veryUsefulAndProfessionalTitleScreenWithJustTheName : public ExtraRaylib::ScreenWrapper
         {
             Texture2D img;
-            Rectangle imageRect = {0,0,865,553};
-            float aspectRation = 865.0f / 553;
+            const Rectangle imageRect = {0,0,865,553};
+            const float aspectRatio = 1.0f * imageRect.width / imageRect.height;
             public:
             void init()
             {
@@ -382,8 +454,8 @@ namespace RayJump
             void draw()
             {
                 ClearBackground(RAYWHITE);
-                float width = std::min(ScreenInfo.width,ScreenInfo.height * 865 / 553);
-                float height = std::min(ScreenInfo.height,ScreenInfo.width / 865 * 553);
+                float width = std::min(ScreenInfo.width,ScreenInfo.height * aspectRatio);
+                float height = std::min(ScreenInfo.height,ScreenInfo.width / aspectRatio);
                 ExtraRaylib::drawTextureDest(
                     img,
                     imageRect,
@@ -400,108 +472,34 @@ namespace RayJump
         {
             public:
             Road roads = Road(2);
-            FeedbackText fText = FeedbackText({50,200,300,100},u"");
-            ExtraRaylib::Button buton = ExtraRaylib::Button("teexts",300,0,24,BLACK,YELLOW);
+            FeedbackText fText = FeedbackText({50,200,300,100},u"default text.");
+            ExtraRaylib::Button langButton = ExtraRaylib::Button(myFont,currentLanguage->first,300,0,24,BLACK,YELLOW);
+            ExtraRaylib::Button help = ExtraRaylib::Button(myFont,"Help",300,0,24,BLACK,YELLOW);
             NormalGame(){
-                if(settings["CopiedTextPos"] > 0)
-                {
-                    std::string copiedText = "basicThing";
-                    std::ifstream fin("Text_files/CopiedTxt.txt");
-                    if(!fin)
-                    {
-                        fText.setText(u"Eroare citire text copiat");
-                        return;
-                    }
-                    if(settings["CopiedTextPos"] > getLineCount(fin))
-                    {
-                        fText.setText(u"Eroare prea multe linii in text copiat");
-                        return;
-                    }
-                    std::cout << "line in file reading: " << settings["CopiedTextPos"] << "\n";
-                    ignoreLines(fin,settings["CopiedTextPos"]-1);
-                    getline(fin,copiedText);
-
-                    std::u16string txt = utf8_to_u16(copiedText);
-                    fText.setText(txt);
-                    fText.restart();
-                }
-                else
-                    fText.setText(u"suferință. Mircea Eliade");
+                fText.setText(savedText::getText());
             }
             void run()
             {
-                if(buton.Lclicked())
-                {
-                    std::cout << "clicked\n";
-                }
+                runButtons();
                 if(soTrue)
                     if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
                         fText.restart(); /// delete dis ltr (debug only)
                 if(fText.finished)
                 {
-                    settings["BestWPM"] = std::max(fText.wpm, settings["BestWPM"]);
+                    if(fText.wpm > settings["BestWPM"] && fText.wpm < 250)
+                        settings["BestWPM"] = fText.wpm;
                     roads.cars[1].wpm = settings["BestWPM"];
                     if((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))
                     {
+                        fText.setText(savedText::getText());
                         fText.restart();
-                        std::ifstream fin("Text_files/CopiedTxt.txt");
-                        if(settings["CopiedTextPos"] < getLineCount(fin) && settings["CopiedTextPos"]>0)
-                        {
-                            std::string copiedText;
-                            ignoreLines(fin,settings["CopiedTextPos"]);
-                            settings["CopiedTextPos"] ++;
-                            getline(fin,copiedText);
-                            std::u16string txt = utf8_to_u16(copiedText);
-                            fText.setText(txt);
-                            fText.restart();
-                        }
-                        else
-                        {
-                            settings["CopiedTextPos"] = -1;
-                            std::string randomTxt = (currentLanguage->second)[rand()%((currentLanguage->second).size())];
-                            fText.setText(utf8_to_u16(randomTxt));
-                        }
-                        fin.close();
                     }
                     return;
                 }
                 if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_V))
                 {
-                    std::string copiedText = GetClipboardText();
-                    copiedText.length();
-                    /// windows problem : adds carriage return (ascii 13 or \r).
-                    copiedText.erase(remove(copiedText.begin(), copiedText.end(), '\r'), copiedText.end());
-                    /// note: remove just moves the text to the left when finding the character
-                    std::ofstream fout("Text_files/CopiedTxt.txt");
-                    char tok[copiedText.size() + 5];
-                    strcpy(tok,copiedText.c_str());
-                    char *p = strtok(tok,"\n");
-                    bool ePrimul = true;
-                    while(p)
-                    {
-                        bool pp = false;
-                        int n = strlen(p);
-                        for(int i=0;i<n;i++)
-                            if(p[i] != ' ')
-                                pp = true;
-                        if(pp)
-                        {
-                            if(!ePrimul)
-                                fout << '\n';
-                            fout << p;
-                            ePrimul = false;
-                        }
-
-                        p = strtok(NULL,"\n");
-                    }
-                    settings["CopiedTextPos"] = 1;
-                    fout.close();
-                    std::ifstream fin("Text_files/CopiedTxt.txt");
-                    getline(fin,copiedText);
-                    std::u16string txt = utf8_to_u16(copiedText);
-                    fText.setText(txt);
-                    fText.restart();
-                    fin.close();
+                    savedText::saveClipboardText();
+                    fText.setText(savedText::getText());
                 }
                 if(!fText.isAtEnd())
                     roads.setCompletionPrc(fText.getTime(),fText.maxChar);
@@ -513,6 +511,24 @@ namespace RayJump
                 {
                     currentScreen.setScreen(ScreenStuff::screens::SRGBpick);
                 }
+            }
+            void runButtons()
+            {
+                langButton.align(100,0,ScreenInfo);
+                if(langButton.Lclicked())
+                {
+                    currentLanguage++;
+                    if(currentLanguage == COUNTRY_TEXT.end())
+                        currentLanguage = COUNTRY_TEXT.begin();
+                    langButton.text = currentLanguage->first;
+                    langButton.re_measure();
+
+                    fText.setText(savedText::getRandomText());
+                }
+                help.align(50,100,ScreenInfo);
+                if(help.Lclicked())
+                    currentScreen.setScreen(ScreenStuff::screens::Shelp);
+
             }
             void draw()
             {
@@ -526,7 +542,8 @@ namespace RayJump
                 roads.draw(fText.startTime);
                 DrawTextEx(myFont,fText.getWPM(),{0,0},18,1,BLACK);
                 DrawTextEx(myFont,fText.getAccuracy(),{100,0},18,1,BLACK);
-                buton.draw();
+                langButton.draw();
+                help.draw();
                 fText.draw();
             }
             void drawFinish()
@@ -544,6 +561,19 @@ namespace RayJump
                 wpm.draw(true);
             }
         } *game = new NormalGame();
+
+        class Help : public ExtraRaylib::ScreenWrapper
+        {
+            void run()
+            {
+                if(IsKeyDown(KEY_ESCAPE))
+                    currentScreen.setScreen(ScreenStuff::screens::Sgame);
+            }
+            void draw()
+            {
+                DrawText("noob.",0,0,80,BLACK);
+            }
+        }helpScreen;
         class ColorPicker : public ExtraRaylib::ScreenWrapper
         {
             public:
@@ -571,6 +601,7 @@ namespace RayJump
             if(now == Sgame) screen = game;
             if(now == SRGBpick) screen = &colorPicker;
             if(now == Stitle) screen = &title;
+            if(now == Shelp) screen = &helpScreen;
 
             return screen;
         }
@@ -595,7 +626,7 @@ namespace RayJump
                     EndDrawing();
                     if(ExtraRaylib::isKeyHeldFor(KEY_ESCAPE,1500))
                         break;
-                        SetMouseCursor(ExtraRaylib::mouseAction);
+                    SetMouseCursor(ExtraRaylib::mouseAction);
                 }
                 saveSettings();
             }

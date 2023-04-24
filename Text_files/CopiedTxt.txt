@@ -1,1 +1,12 @@
-RSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆć
+class Help : public ExtraRaylib::ScreenWrapper
+{
+void run()
+{
+if(IsKeyDown(KEY_ESCAPE))
+currentScreen.setScreen(ScreenStuff::screens::Sgame);
+}
+void draw()
+{
+DrawText("noob.",0,0,50,BLACK);
+}
+}helpScreen;

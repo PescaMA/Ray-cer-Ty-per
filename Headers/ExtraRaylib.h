@@ -233,17 +233,50 @@ namespace ExtraRaylib
             int pos = 0;
             int nr = 0;
             sepText.emplace_back();
+            float lineSize = 0;
             while(pos < sz)
             {
                 int extra = 0;
                 for(extra = 0;extra + pos < sz && text[extra+pos]!=' ';extra++);
                 std::u16string addedWord = text.substr(pos,extra+1);
-                if(MeasureTextUnicode(*font,sepText[nr]+addedWord,font_size,1) > rect.width)
-                    nr++,sepText.emplace_back();
+                float wordSize = MeasureTextUnicode(*font,addedWord,font_size,1);
+                if(wordSize > rect.width)
+                {
+                    bigWord(addedWord,nr,pos,lineSize);
+                    continue;
+                }
+                lineSize+=wordSize;
+                if(lineSize > rect.width)
+                {
+                    nr++;
+                    sepText.emplace_back();
+                    lineSize = wordSize;
+                }
+
                 sepText[nr]+=addedWord;
+
                 pos += extra + 1;
             }
             sepTextSize = sepText.size();
+        }
+        void bigWord(std::u16string addedWord,int &nr,int&pos,float &lineSize)
+        {
+            float letterSize = MeasureTextUnicode(*font,u"a",font_size,1);
+            int letters = (rect.width - lineSize) / letterSize;
+            while(!addedWord.empty())
+            {
+                sepText[nr] += addedWord.substr(0,letters);
+                addedWord.erase(0,letters);
+                pos += letters;
+                letters = rect.width / letterSize;
+                if(letters > addedWord.size())
+                {
+                    letters = addedWord.size();
+                    lineSize = letters * letterSize;
+                }
+                nr++;
+                sepText.emplace_back();
+            }
         }
         void draw(int linePos = 0)
         {
@@ -350,7 +383,7 @@ namespace ExtraRaylib
     };
     struct Button
     {
-        char text[105];
+        std::string text;
         Rectangle rect;
         struct ColorPair
         {
@@ -360,17 +393,19 @@ namespace ExtraRaylib
         float thickness;
         bool isHovering;
         bool forceHover;
+        Font *font;
         Button(){}
-        Button(char const text[],int startX,int startY,int fontSize,Color color,Color hoverColor)
+        Button(Font &font,std::string text,int startX,int startY,int fontSize,Color color,Color hoverColor)
+        :font(&font),text(text),fontSize(fontSize)
         {
             isHovering=false;
-            strcpy(this->text,text);
-            thickness=std::max(1,fontSize/10);
-            this->fontSize=fontSize;
-            rect= {(float)startX,(float)startY,
-            (float)MeasureText(text,fontSize)+10+thickness*2 , fontSize+10+thickness*2};
             forceHover=false;
-            normalColor.text=color;
+            thickness=std::max(1,fontSize/10);
+            rect= {(float)startX,(float)startY, ///x,y
+            (float)MeasureTextEx(*(this->font),text.c_str(),fontSize,1).x+10+thickness*2, ///width
+            fontSize+10+thickness*2}; /// height
+
+            (this->normalColor).text=color;
             (this->hoverColor).text=hoverColor;
             normalColor.background=(this->hoverColor).background=BLANK;
         }
@@ -390,7 +425,8 @@ namespace ExtraRaylib
             ColorPair color=getCurrentColor(transparency);
             DrawRectangleRec(rect,color.background);
             DrawRectangleLinesEx(rect,thickness,color.text);
-            DrawText(text,rect.x+5+thickness,rect.y+5+thickness,fontSize,color.text);
+            Vector2 position = {rect.x + 5 + thickness, rect.y + 5 + thickness};
+            DrawTextEx(*font,text.c_str(),position,fontSize,1,color.text);
         }
         bool Lclicked()
         {
@@ -399,6 +435,15 @@ namespace ExtraRaylib
         bool Rclicked()
         {
             return clicked(1);
+        }
+        void align(int xPrc,int yPrc,Rectangle container)
+        {
+            ExtraRaylib::align(rect.x,container.x,container.width,xPrc/100.0f,rect.width);
+            ExtraRaylib::align(rect.y,container.y,container.height,yPrc/100.0f,rect.height);
+        }
+        void re_measure()
+        {
+            rect.width=MeasureTextEx(*font,text.c_str(),rect.height-10 - thickness*2,1).x + 10 + thickness*2;
         }
         protected:
         bool clicked(int nr)
@@ -421,10 +466,6 @@ namespace ExtraRaylib
             else
                 isHovering=false;
             return false;
-        }
-        void re_measure()
-        {
-            rect.width=MeasureText(text,rect.height-5)+10;
         }
     };
 }
