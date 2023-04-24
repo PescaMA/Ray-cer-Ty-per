@@ -36,7 +36,21 @@ namespace RayJump
             readSettings();
             InitWindow(ScreenInfo.width,ScreenInfo.height,"Rayjump");
             SetWindowMinSize(500,375);
-            myFont = LoadFontEx("liberation_mono.ttf", 18*4, NULL, 1000);
+            BeginDrawing();
+            ClearBackground(RAYWHITE);
+            float width = std::min(ScreenInfo.width,ScreenInfo.height * 865 / 553);
+            float height = std::min(ScreenInfo.height,ScreenInfo.width / 865 * 553);
+            ExtraRaylib::drawTextureDest(
+                LoadTexture("Images/title.png"),
+                {0,0,865,553},
+                {
+                    ScreenInfo.width/2 - width/2,
+                    ScreenInfo.height/2 - height/2,
+                    width, height
+                }
+            );
+            EndDrawing();
+            myFont = LoadFontEx("liberation_mono.ttf", 18*4, NULL, 9000);
             SetExitKey(0);
             CAR_ASSET_STRUCTURE = LoadTexture("Images/carStructure.png");
             CAR_ASSET_COLOR = LoadTexture("Images/carColor.png");
@@ -368,12 +382,18 @@ namespace RayJump
             void draw()
             {
                 ClearBackground(RAYWHITE);
-                Rectangle rectNicon = ScreenInfo;
-                rectNicon.width = std::min(rectNicon.width,rectNicon.height * aspectRation);
-                rectNicon.height = std::min(rectNicon.height,rectNicon.width / aspectRation);
-                rectNicon.x = ScreenInfo.width/2 - rectNicon.width/2;
-                rectNicon.y = ScreenInfo.height/2 - rectNicon.height/2;
-                ExtraRaylib::drawTextureDest(img,imageRect,rectNicon);
+                float width = std::min(ScreenInfo.width,ScreenInfo.height * 865 / 553);
+                float height = std::min(ScreenInfo.height,ScreenInfo.width / 865 * 553);
+                ExtraRaylib::drawTextureDest(
+                    img,
+                    imageRect,
+                    {
+                        ScreenInfo.width/2 - width/2,
+                        ScreenInfo.height/2 - height/2,
+                        width,
+                        height
+                    }
+                );
             }
         }title;
         class NormalGame : public ExtraRaylib::ScreenWrapper
@@ -381,6 +401,7 @@ namespace RayJump
             public:
             Road roads = Road(2);
             FeedbackText fText = FeedbackText({50,200,300,100},u"");
+            ExtraRaylib::Button buton = ExtraRaylib::Button("teexts",300,0,24,BLACK,YELLOW);
             NormalGame(){
                 if(settings["CopiedTextPos"] > 0)
                 {
@@ -409,6 +430,10 @@ namespace RayJump
             }
             void run()
             {
+                if(buton.Lclicked())
+                {
+                    std::cout << "clicked\n";
+                }
                 if(soTrue)
                     if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
                         fText.restart(); /// delete dis ltr (debug only)
@@ -501,6 +526,7 @@ namespace RayJump
                 roads.draw(fText.startTime);
                 DrawTextEx(myFont,fText.getWPM(),{0,0},18,1,BLACK);
                 DrawTextEx(myFont,fText.getAccuracy(),{100,0},18,1,BLACK);
+                buton.draw();
                 fText.draw();
             }
             void drawFinish()
@@ -560,6 +586,7 @@ namespace RayJump
                 colorPicker.setColor(player->color);
                 while(!WindowShouldClose())
                 {
+                    ExtraRaylib::mouseAction = MOUSE_CURSOR_DEFAULT;
                     updateScreenVariables();
                     currentScreen.getScreen()->run();
                     BeginDrawing();
@@ -568,6 +595,7 @@ namespace RayJump
                     EndDrawing();
                     if(ExtraRaylib::isKeyHeldFor(KEY_ESCAPE,1500))
                         break;
+                        SetMouseCursor(ExtraRaylib::mouseAction);
                 }
                 saveSettings();
             }

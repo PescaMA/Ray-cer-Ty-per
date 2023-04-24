@@ -3,5 +3,5 @@ CopiedTextPos -1
 PlayerB 200
 PlayerG 0
 PlayerR 255
-ScreenHeight 375
-ScreenWidth 500
+ScreenHeight 508
+ScreenWidth 1108

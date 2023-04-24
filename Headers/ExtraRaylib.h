@@ -43,6 +43,14 @@ int getLineCount(std::string filePath)
     fin.close();
     return result;
 }
+int* u16_to_codepoint(std::u16string font)
+{
+    static int *result= new int(font.size());
+    for(int i=0;i<font.size();i++){
+        result[i]=font[i];
+    }
+    return result;
+}
 std::u32string utf8_to_u32(std::string const& utf8) {
     std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> cnv;
     std::u32string u32s = cnv.from_bytes(utf8);
@@ -65,6 +73,7 @@ void ignoreLines(std::ifstream &fin,int lineNr)
 }
 namespace ExtraRaylib
 {
+    int mouseAction;
     void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
     {
         /// not entirely sure what all the parameters mean but seems to work.
@@ -338,5 +347,84 @@ namespace ExtraRaylib
     {
         virtual void run(){}
         virtual void draw(){}
+    };
+    struct Button
+    {
+        char text[105];
+        Rectangle rect;
+        struct ColorPair
+        {
+            Color text,background;
+        }normalColor,hoverColor;
+        int fontSize;
+        float thickness;
+        bool isHovering;
+        bool forceHover;
+        Button(){}
+        Button(char const text[],int startX,int startY,int fontSize,Color color,Color hoverColor)
+        {
+            isHovering=false;
+            strcpy(this->text,text);
+            thickness=std::max(1,fontSize/10);
+            this->fontSize=fontSize;
+            rect= {(float)startX,(float)startY,
+            (float)MeasureText(text,fontSize)+10+thickness*2 , fontSize+10+thickness*2};
+            forceHover=false;
+            normalColor.text=color;
+            (this->hoverColor).text=hoverColor;
+            normalColor.background=(this->hoverColor).background=BLANK;
+        }
+        ColorPair getCurrentColor(int transparency)
+        {
+            ColorPair color;
+            if(isHovering || forceHover)
+                color=hoverColor;
+            else
+                color=normalColor;
+            color.text.a=std::min(transparency,(int)color.text.a);
+            color.background.a=std::min(transparency,(int)color.background.a);
+            return color;
+        }
+        void draw(int transparency=255)
+        {
+            ColorPair color=getCurrentColor(transparency);
+            DrawRectangleRec(rect,color.background);
+            DrawRectangleLinesEx(rect,thickness,color.text);
+            DrawText(text,rect.x+5+thickness,rect.y+5+thickness,fontSize,color.text);
+        }
+        bool Lclicked()
+        {
+            return clicked(0);
+        }
+        bool Rclicked()
+        {
+            return clicked(1);
+        }
+        protected:
+        bool clicked(int nr)
+        {
+            Vector2 mouse=GetMousePosition();
+            if(forceHover && IsKeyPressed(KEY_ENTER))
+            {
+                forceHover=false;
+                return true;
+            }
+
+            if (CheckCollisionPointRec(mouse, rect))
+            {
+                isHovering=true;
+                mouseAction=MOUSE_CURSOR_POINTING_HAND;
+                SetMouseCursor(mouseAction);
+                if(IsMouseButtonPressed(nr))
+                    return true;
+            }
+            else
+                isHovering=false;
+            return false;
+        }
+        void re_measure()
+        {
+            rect.width=MeasureText(text,rect.height-5)+10;
+        }
     };
 }

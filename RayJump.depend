@@ -7,7 +7,7 @@
 	<random>
 	<chrono>
 
-1682063517 source:/home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/main.cpp
+1682326098 source:/home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/main.cpp
 	<iostream>
 	<fstream>
 	"raylib.h"
@@ -15,7 +15,9 @@
 	<random>
 	<chrono>
 	<string.h>
+	<algorithm>
 	"Headers/ExtraRaylib.h"
+	"Headers/TexteHardCoded.h"
 
 1682281909 source:d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\main.cpp
 	<iostream>
@@ -46,12 +48,11 @@
 	<map>
 	<string.h>
 
-1681981891 /home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/Headers/ExtraRaylib.h
+1682324000 /home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/Headers/ExtraRaylib.h
 	<iostream>
 	<fstream>
 	<raylib.h>
 	<map>
-	<random>
 	<chrono>
 	<string.h>
 	<climits>
@@ -59,6 +60,10 @@
 	<codecvt>
 
 1682258532 d:\code blocks\probleme interesante\raylib\4thunfinishedproject\rayjump\headers\textehardcoded.h
+	<string>
+	<map>
+
+1682324587 /home/Matei/Public/code blocks/ray-cer/Ray-cer-Ty-per/Headers/TexteHardCoded.h
 	<string>
 	<map>
 
