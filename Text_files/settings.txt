@@ -1,7 +1,9 @@
-BestWPM 80
-CopiedTextPos 12
+AverageWPM 0
+BestWPM 30
+CopiedTextPos -1
+GamesPlayed 0
 PlayerB 200
 PlayerG 0
-PlayerR 255
-ScreenHeight 508
-ScreenWidth 500
+PlayerR 0
+ScreenHeight 540
+ScreenWidth 960

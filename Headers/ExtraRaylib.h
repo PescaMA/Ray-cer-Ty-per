@@ -343,15 +343,21 @@ namespace ExtraRaylib
         Color *directColor = nullptr;
         Slider Sr,Sg,Sb;
         Choose_RGB(int x,int y,int width,int H):x(x),y(y),width(width),height(H),
-        Sr(x+10,(int)(y+0.25*height),width * 0.7,height * 0.1),
-        Sg(x+10,(int)(y+0.50*height),width * 0.7,height * 0.1),
-        Sb(x+10,(int)(y+0.75*height),width * 0.7,height * 0.1){}
+        Sr(x+10,(int)(y+0.25*height),width * 0.5,height * 0.1),
+        Sg(x+10,(int)(y+0.50*height),width * 0.5,height * 0.1),
+        Sb(x+10,(int)(y+0.75*height),width * 0.5,height * 0.1){}
         void draw()
         {
             DrawRectangle(x,y,width,height,GRAY);
+            int left = Sr.x + Sr.len + Sr.radius;
+            int right = x + width;
+            int center = (left + right)/2;
             Sr.draw();
+            DrawText("Red",center - MeasureText("Red",Sr.radius)/2,Sr.y - Sr.radius * 0.7f,Sr.radius,BLACK);
             Sg.draw();
+            DrawText("Green",center - MeasureText("Green",Sg.radius)/2,Sg.y - Sg.radius * 0.7f,Sg.radius,BLACK);
             Sb.draw();
+            DrawText("Blue",center - MeasureText("Blue",Sb.radius)/2,Sb.y - Sb.radius * 0.7f,Sb.radius,BLACK);
         }
         void setColor(Color &color)
         {

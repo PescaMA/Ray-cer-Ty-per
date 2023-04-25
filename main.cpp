@@ -9,7 +9,6 @@
 #include "Headers/ExtraRaylib.h"
 #include "Headers/TexteHardCoded.h"
 const extern CountryMap COUNTRY_TEXT;
-const bool soTrue = true;
 namespace RayJump
 {
     CountryMap::const_iterator currentLanguage = COUNTRY_TEXT.begin();
@@ -19,9 +18,10 @@ namespace RayJump
     Texture2D CAR_ASSET_STRUCTURE;
     Texture2D CAR_ASSET_COLOR;
     Font myFont;
-    const char carNames[][30]={
+    const std::vector<std::string> carNames={
         "<- Tu (joc curent)",
-        "<- Jocul cel mai bun"
+        "<- Jocul cel mai bun",
+        "<- Media jocurilor"
     };
 
     class Loader
@@ -56,14 +56,16 @@ namespace RayJump
             CAR_ASSET_COLOR = LoadTexture("Images/carColor.png");
             SetTargetFPS(fps);
         }
-        void defaultSettings()
+        static void defaultSettings()
         {
             settings["ScreenWidth"] = 960;
             settings["ScreenHeight"] = 540;
             settings["PlayerR"] = 0;
             settings["PlayerG"] = 0;
             settings["PlayerB"] = 200;
-            settings["BestWPM"] = 10;
+            settings["BestWPM"] = 11;
+            settings["GamesPlayed"] = 0;
+            settings["AverageWPM"] = 10;
             settings["CopiedTextPos"] = -1;
 
             ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
@@ -80,12 +82,13 @@ namespace RayJump
             fin.close();
             ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
         }
-        void changeSettings()
+        static void changeSettings()
         {
             std::ofstream fout("Text_files/settings.txt");
             if(!fout)return;
             for(std::map<std::string,float>::iterator it=settings.begin();it!=settings.end();it++)
                 fout<<(it->first)<<' '<<(it->second)<<'\n';
+            fout.close();
         }
         void unload()
         {
@@ -109,12 +112,20 @@ namespace RayJump
         float const y;
         int wpm = 15;
         int id;
+        const std::string *name;
 
         Color color = {0,222,0,255};
-        Car():y(0){;}
-        Car(float y,int id):y(y),id(id){;}
+        Car():y(0),id(999){getName();}
+        Car(float y,int id):y(y),id(id){getName();}
         void run()
         {true;}
+        void getName()
+        {
+            if(id < carNames.size())
+                name = &(carNames[id]);
+            else
+                name = new std::string("Random car");
+        }
         bool rightClicked()
         {
             return IsMouseButtonDown(1) && CheckCollisionPointRec(GetMousePosition(),{getPos(),y,WIDTH,HEIGHT});
@@ -129,7 +140,7 @@ namespace RayJump
             DrawTexture(CAR_ASSET_COLOR,getPos(),y,color);
             DrawTexture(CAR_ASSET_STRUCTURE,getPos(),y,WHITE);
             if(!isGameStarted){
-                DrawTextEx(myFont,carNames[id],{getPos() + WIDTH + 5,y + 15},18,1,BLACK);
+                DrawTextEx(myFont,(*name).c_str(),{getPos() + WIDTH + 5,y + 15},18,1,BLACK);
             }
         }
     }; ///non const statics need to be declared
@@ -137,7 +148,7 @@ namespace RayJump
     {
         int const Ystart = 50;
         int Ylength = Car::HEIGHT + 5;
-        int const MAX_NR_OF_CARS = 2;
+        int const MAX_NR_OF_CARS = 4;
         int nrOfRoads = 1;
         int roadWidth;
 
@@ -151,7 +162,12 @@ namespace RayJump
             nrOfRoads = nr_of_cars;
             for(int i=0;i<nr_of_cars;i++)
                 cars.emplace_back(Ystart + i*Ylength, i);
-            if(nr_of_cars >= 2)cars[1].wpm = settings["BestWPM"];
+            updateCarWPM();
+        }
+        void updateCarWPM()
+        {
+            if(cars.size() > 1)cars[1].wpm = settings["BestWPM"];
+            if(cars.size() > 2)cars[2].wpm = settings["AverageWPM"];
         }
         void run()
         {
@@ -471,24 +487,24 @@ namespace RayJump
         class NormalGame : public ExtraRaylib::ScreenWrapper
         {
             public:
-            Road roads = Road(2);
-            FeedbackText fText = FeedbackText({50,200,300,100},u"default text.");
+            Road roads = Road(4);
+            FeedbackText fText = FeedbackText({50,300,500,100},u"default text.");
             ExtraRaylib::Button langButton = ExtraRaylib::Button(myFont,currentLanguage->first,300,0,24,BLACK,YELLOW);
             ExtraRaylib::Button help = ExtraRaylib::Button(myFont,"Help",300,0,24,BLACK,YELLOW);
-            NormalGame(){
+            ExtraRaylib::Button deleteData = ExtraRaylib::Button(myFont,"Erase all data",300,0,24,BLACK,RED);
+            NormalGame():fText({50,300,500,100},u"default text."){
                 fText.setText(savedText::getText());
             }
             void run()
             {
                 runButtons();
-                if(soTrue)
-                    if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
-                        fText.restart(); /// delete dis ltr (debug only)
+                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
+                    fText.restart();
                 if(fText.finished)
                 {
-                    if(fText.wpm > settings["BestWPM"] && fText.wpm < 250)
+                    if(fText.wpm > settings["BestWPM"] && fText.wpm < 250 && fText.maxChar > 15)
                         settings["BestWPM"] = fText.wpm;
-                    roads.cars[1].wpm = settings["BestWPM"];
+                    roads.updateCarWPM();
                     if((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))
                     {
                         fText.setText(savedText::getText());
@@ -526,8 +542,19 @@ namespace RayJump
                     fText.setText(savedText::getRandomText());
                 }
                 help.align(50,100,ScreenInfo);
-                if(help.Lclicked())
+                if(help.Lclicked() || IsKeyPressed(KEY_F1))
                     currentScreen.setScreen(ScreenStuff::screens::Shelp);
+                deleteData.align(0,100,ScreenInfo);
+                if(deleteData.Lclicked())
+                {
+                    Rectangle window = ScreenInfo;
+                    Loader::defaultSettings();
+                    ScreenInfo = window;
+                    Loader::changeSettings();
+                    fText.restart();
+                    roads.updateCarWPM();
+
+                }
 
             }
             void draw()
@@ -545,6 +572,7 @@ namespace RayJump
                 langButton.draw();
                 help.draw();
                 fText.draw();
+                deleteData.draw();
             }
             void drawFinish()
             {
@@ -566,18 +594,24 @@ namespace RayJump
         {
             void run()
             {
-                if(IsKeyDown(KEY_ESCAPE))
+                if(IsKeyDown(KEY_ESCAPE) || IsKeyPressed(KEY_F1))
                     currentScreen.setScreen(ScreenStuff::screens::Sgame);
             }
             void draw()
             {
-                DrawText("noob.",0,0,80,BLACK);
+                DrawText("This is a game. Objective is to have fun.\n"
+                         "To begin, press the keys on the keyboard and type the letters you see\n"
+                         "List of controls:\n"
+                         "-> Ctrl + R: restarts text\n"
+                         "-> Right click on car: change color\n"
+                         "-> Ctrl + V: put copied text in"
+                         "-> Escape: go to the game screen",0,0,13,BLACK);
             }
         }helpScreen;
         class ColorPicker : public ExtraRaylib::ScreenWrapper
         {
             public:
-            ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(30,200,60,60);
+            ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(30,200,200,60);
             void setColor(Color& color)
             {
                 RGBcolor.setColor(color);
