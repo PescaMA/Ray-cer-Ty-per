@@ -70,6 +70,17 @@ namespace RayJump
 
             ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
         }
+        static void updateSettings(float wpm,int textLength)
+        {
+            settings["GamesPlayed"]++;
+            if(wpm > 250 || textLength <= 15)
+                return; /// is not valid
+            if(wpm > settings["BestWPM"])
+                settings["BestWPM"] = wpm;
+            settings["AverageWPM"] = (wpm + settings["AverageWPM"] * (settings["GamesPlayed"]-1)) / settings["GamesPlayed"];
+
+
+        }
         void readSettings()
         {
             std::ifstream fin("Text_files/settings.txt");
@@ -132,7 +143,7 @@ namespace RayJump
         }
         float getPos()
         {
-            int roadWidth = ScreenInfo.width - START*2;
+            int roadWidth = ScreenInfo.width - START*4;
             return START + std::max((roadWidth-WIDTH),0) * xPr;
         }
         void draw(bool isGameStarted = false)
@@ -146,6 +157,7 @@ namespace RayJump
     }; ///non const statics need to be declared
     class Road
     {
+        Font *font;
         int const Ystart = 50;
         int Ylength = Car::HEIGHT + 5;
         int const MAX_NR_OF_CARS = 4;
@@ -155,7 +167,8 @@ namespace RayJump
         int const Xstart = 40;
         public:
         std::vector <Car> cars;
-        Road(int nr_of_cars)
+        Road(Font &font,int nr_of_cars)
+        :font(&font)
         {
             if(nr_of_cars > MAX_NR_OF_CARS)
                 nr_of_cars = MAX_NR_OF_CARS;
@@ -171,7 +184,7 @@ namespace RayJump
         }
         void run()
         {
-            roadWidth = ScreenInfo.width - Car::START*2;
+            roadWidth = ScreenInfo.width - Car::START*4;
             int sz = cars.size();
             for(int i=0; i<sz; i++)
                 cars[i].run();
@@ -200,7 +213,12 @@ namespace RayJump
             DrawRectangle(Xstart,Ystart,roadWidth,nrOfRoads*Ylength,GRAY);
             int sz = cars.size();
             for(int i=0; i<sz; i++)
+            {
                 cars[i].draw(isStarted);
+                Vector2 position = {Xstart + roadWidth + 10.0f,cars[i].y + 14.0f};
+                DrawTextEx(*font,TextFormat("%i wpm",cars[i].wpm),position,20,1,BLACK);
+            }
+
         }
     };
 
@@ -278,12 +296,6 @@ namespace RayJump
             secondPassed ++ ;
             wpm = 1.0f*currentChar/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
             accuracy = 1.0f * currentChar / total * 10000;
-        }
-        const char* getWPM()
-        {
-            static std::string result;
-            result = (std::to_string((int)std::round(wpm)) + " wpm");
-            return result.c_str();
         }
         const char* getAccuracy()
         {
@@ -487,12 +499,12 @@ namespace RayJump
         class NormalGame : public ExtraRaylib::ScreenWrapper
         {
             public:
-            Road roads = Road(4);
-            FeedbackText fText = FeedbackText({50,300,500,100},u"default text.");
+            Road roads = Road(myFont,3);
+            FeedbackText fText;
             ExtraRaylib::Button langButton = ExtraRaylib::Button(myFont,currentLanguage->first,300,0,24,BLACK,YELLOW);
             ExtraRaylib::Button help = ExtraRaylib::Button(myFont,"Help",300,0,24,BLACK,YELLOW);
             ExtraRaylib::Button deleteData = ExtraRaylib::Button(myFont,"Erase all data",300,0,24,BLACK,RED);
-            NormalGame():fText({50,300,500,100},u"default text."){
+            NormalGame():fText({40,230,430,100},u"default text."){
                 fText.setText(savedText::getText());
             }
             void run()
@@ -500,18 +512,15 @@ namespace RayJump
                 runButtons();
                 if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
                     fText.restart();
-                if(fText.finished)
+                if(fText.finished && (ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))
                 {
-                    if(fText.wpm > settings["BestWPM"] && fText.wpm < 250 && fText.maxChar > 15)
-                        settings["BestWPM"] = fText.wpm;
+                    Loader::updateSettings(fText.wpm,fText.maxChar);
                     roads.updateCarWPM();
-                    if((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))
-                    {
-                        fText.setText(savedText::getText());
-                        fText.restart();
-                    }
-                    return;
+                    fText.setText(savedText::getText());
+                    fText.restart();
                 }
+                if(fText.finished)
+                    return;
                 if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_V))
                 {
                     savedText::saveClipboardText();
@@ -520,6 +529,7 @@ namespace RayJump
                 if(!fText.isAtEnd())
                     roads.setCompletionPrc(fText.getTime(),fText.maxChar);
                 player->xPr=fText.getPrc();
+                player->wpm = fText.wpm;
                 fText.run();
                 roads.run();
                 int nr = roads.getCarRightClicked();
@@ -541,7 +551,7 @@ namespace RayJump
 
                     fText.setText(savedText::getRandomText());
                 }
-                help.align(50,100,ScreenInfo);
+                help.align(100,100,ScreenInfo);
                 if(help.Lclicked() || IsKeyPressed(KEY_F1))
                     currentScreen.setScreen(ScreenStuff::screens::Shelp);
                 deleteData.align(0,100,ScreenInfo);
@@ -553,9 +563,7 @@ namespace RayJump
                     Loader::changeSettings();
                     fText.restart();
                     roads.updateCarWPM();
-
                 }
-
             }
             void draw()
             {
@@ -567,11 +575,9 @@ namespace RayJump
             void drawGame()
             {
                 roads.draw(fText.startTime);
-                DrawTextEx(myFont,fText.getWPM(),{0,0},18,1,BLACK);
-                DrawTextEx(myFont,fText.getAccuracy(),{100,0},18,1,BLACK);
+                fText.draw();
                 langButton.draw();
                 help.draw();
-                fText.draw();
                 deleteData.draw();
             }
             void drawFinish()
@@ -582,11 +588,17 @@ namespace RayJump
                 DrawRectangleRec(Header,YELLOW);
                 using ExtraRaylib::TxtAligned;
                 TxtAligned winMessage(&myFont,"You can type. Grats!",rect,50,10,36,GREEN,BLANK);
-                TxtAligned accuracy(&myFont,fText.getWPM(),rect,20,30,20,BLACK,BLANK);
-                TxtAligned wpm(&myFont,fText.getAccuracy(),rect,80,30,20,BLACK,BLANK);
+                TxtAligned characters(&myFont,TextFormat("You just typed %i characters with: ",(int)fText.maxChar),rect,50,30,20,BLACK,BLANK);
+                TxtAligned wpm(&myFont,TextFormat("%i wpm",(int)fText.wpm),rect,20,50,20,BLACK,BLANK);
+                TxtAligned accuracy(&myFont,fText.getAccuracy(),rect,80,50,20,BLACK,BLANK);
+                TxtAligned gamesPlayed(&myFont,TextFormat("%i games played previously",(int)settings["GamesPlayed"]),rect,0,80,20,BLACK,BLANK);
+                TxtAligned avgWpm(&myFont,TextFormat("%i average wpm previously",(int)settings["AverageWPM"]),rect,0,90,20,BLACK,BLANK);
                 winMessage.draw(true);
                 accuracy.draw(true);
                 wpm.draw(true);
+                characters.draw();
+                gamesPlayed.draw();
+                avgWpm.draw();
             }
         } *game = new NormalGame();
 
