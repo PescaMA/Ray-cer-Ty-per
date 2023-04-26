@@ -1,6 +1,27 @@
 #include <string>
 #include <map>
 typedef std::map <std::string,std::vector<std::string>> CountryMap;
+namespace HardcodeRayJump
+{
+std::string HELP_MESSEAGE = R"(Welcome to [Game Name]
+
+Objective:
+Type out the given text as fast as you can.
+
+Mechanics:
+
+    Type the first letter to begin a new race.
+    Correctly typed characters will turn green, while incorrect ones will turn red.
+    The game ends when the player types out all the words in the list and presses Enter.
+    To turn to the main game screen press Escape.
+    Right Click on a car to change its color;
+
+Typing Tips:
+
+    Sit with your back straight and your feet flat on the ground.
+    Rest your index fingers on the home keys (F and J);
+    Type with a smooth and steady rhythm.
+    Practice typing regularly to improve your speed and accuracy.)";
 const CountryMap COUNTRY_TEXT =
 {
     {
@@ -155,4 +176,4 @@ const CountryMap COUNTRY_TEXT =
         }
     }
 };
-///std::u16string LiberationMono=u" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽžſƒǺǻǼǽǾǿȘșȚțˆˇˉ˘˙˚˛˜˝;΄΅Ά·ΈΉΊΌΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώЀЁЂЃЄЅІЇЈЉЊЋЌЍЎЏАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюяѐёђѓєѕіїјљњћќѝўџҐґẀẁẂẃẄẅỲỳ‐‑–—―‗‘’‚‛“”„†‡•…‰′″‹›‼‾⁄ⁿ₣₤₧€℅ℓ№™Ω℮⅛⅜⅝⅞←↑→↓↔↕↨∂∆∏∑−∕∙√∞∟∩∫≈≠≡≤≥⌂⌐⌠⌡─│┌┐└┘├┤┬┴┼═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬▀▄█▌▐░▒▓■□▪▫▬▲►▼◄◊○●◘◙◦☺☻☼♀♂♠♣♥♦♪♫♬ﬁ";
+}

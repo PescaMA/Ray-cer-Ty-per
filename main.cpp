@@ -8,7 +8,8 @@
 #include <algorithm>/// for remove, erase
 #include "Headers/ExtraRaylib.h"
 #include "Headers/TexteHardCoded.h"
-const extern CountryMap COUNTRY_TEXT;
+extern const CountryMap HardcodeRayJump::COUNTRY_TEXT;
+using HardcodeRayJump::COUNTRY_TEXT;
 namespace RayJump
 {
     CountryMap::const_iterator currentLanguage = COUNTRY_TEXT.begin();
@@ -18,10 +19,15 @@ namespace RayJump
     Texture2D CAR_ASSET_STRUCTURE;
     Texture2D CAR_ASSET_COLOR;
     Font myFont;
-    const std::vector<std::string> carNames={
+    const std::vector<std::string> carNamesRO={
         "<- Tu (joc curent)",
         "<- Jocul cel mai bun",
         "<- Media jocurilor"
+    };
+    const std::vector<std::string> carNamesEN={
+        "<- You (current game)",
+        "<- Best game",
+        "<- Average game"
     };
 
     class Loader
@@ -60,9 +66,15 @@ namespace RayJump
         {
             settings["ScreenWidth"] = 960;
             settings["ScreenHeight"] = 540;
-            settings["PlayerR"] = 0;
+            settings["PlayerR"] = 250;
             settings["PlayerG"] = 0;
-            settings["PlayerB"] = 200;
+            settings["PlayerB"] = 0;
+            settings["Car1R"] = 0;
+            settings["Car1G"] = 250;
+            settings["Car1B"] = 0;
+            settings["Car2R"] = 0;
+            settings["Car2G"] = 0;
+            settings["Car2B"] = 250;
             settings["BestWPM"] = 11;
             settings["GamesPlayed"] = 0;
             settings["AverageWPM"] = 10;
@@ -132,8 +144,8 @@ namespace RayJump
         {true;}
         void getName()
         {
-            if(id < carNames.size())
-                name = &(carNames[id]);
+            if(id < carNamesEN.size())
+                name = currentLanguage==COUNTRY_TEXT.begin()?&(carNamesEN[id]):&(carNamesRO[id]);///currentLanguage->first;
             else
                 name = new std::string("Random car");
         }
@@ -148,6 +160,7 @@ namespace RayJump
         }
         void draw(bool isGameStarted = false)
         {
+            getName();
             DrawTexture(CAR_ASSET_COLOR,getPos(),y,color);
             DrawTexture(CAR_ASSET_STRUCTURE,getPos(),y,WHITE);
             if(!isGameStarted){
@@ -181,6 +194,35 @@ namespace RayJump
         {
             if(cars.size() > 1)cars[1].wpm = settings["BestWPM"];
             if(cars.size() > 2)cars[2].wpm = settings["AverageWPM"];
+        }
+        void loadColors()
+        {
+            cars[0].color.r = settings["PlayerR"];
+            cars[0].color.g= settings["PlayerG"];
+            cars[0].color.b= settings["PlayerB"];
+            if(cars.size() <= 1) return;
+            cars[1].color.r = settings["Car1R"];
+            cars[1].color.g = settings["Car1G"];
+            cars[1].color.b = settings["Car1B"];
+            if(cars.size() <= 2) return;
+            cars[2].color.r = settings["Car2R"];
+            cars[2].color.g = settings["Car2G"];
+            cars[2].color.b = settings["Car2B"];
+
+        }
+        void saveColors()
+        {
+            settings["PlayerR"] = cars[0].color.r;
+            settings["PlayerG"] = cars[0].color.g;
+            settings["PlayerB"] = cars[0].color.b;
+            if(cars.size() <= 1) return;
+            settings["Car1R"] = cars[1].color.r;
+            settings["Car1G"] = cars[1].color.g;
+            settings["Car1B"] = cars[1].color.b;
+            if(cars.size() <= 2) return;
+            settings["Car2R"] = cars[2].color.r;
+            settings["Car2G"] = cars[2].color.g;
+            settings["Car2B"] = cars[2].color.b;
         }
         void run()
         {
@@ -454,6 +496,7 @@ namespace RayJump
     namespace ScreenManaging
     {
         Car *player;
+        Car *selectedCar;
         class ScreenStuff
         {
             public:
@@ -512,7 +555,8 @@ namespace RayJump
                 runButtons();
                 if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
                     fText.restart();
-                if(fText.finished && (ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))
+                if(fText.finished && (IsKeyPressed(KEY_ESCAPE) ||
+                ((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))))
                 {
                     Loader::updateSettings(fText.wpm,fText.maxChar);
                     roads.updateCarWPM();
@@ -533,6 +577,11 @@ namespace RayJump
                 fText.run();
                 roads.run();
                 int nr = roads.getCarRightClicked();
+                if(nr != -1)
+                {
+                    selectedCar = &roads.cars[nr];
+                    currentScreen.setScreen(ScreenStuff::screens::SRGBpick);
+                }
                 if(nr == 0) /// we can only custimize the first car (our own)
                 {
                     currentScreen.setScreen(ScreenStuff::screens::SRGBpick);
@@ -547,7 +596,11 @@ namespace RayJump
                     if(currentLanguage == COUNTRY_TEXT.end())
                         currentLanguage = COUNTRY_TEXT.begin();
                     langButton.text = currentLanguage->first;
+                    help.text = currentLanguage->first == "english" ?"Help":"Ajutor";
+                    deleteData.text = currentLanguage==COUNTRY_TEXT.begin()?"Erase all data":"Șterge toate datele";
                     langButton.re_measure();
+                    help.re_measure();
+                    deleteData.re_measure();
 
                     fText.setText(savedText::getRandomText());
                 }
@@ -560,6 +613,8 @@ namespace RayJump
                     Rectangle window = ScreenInfo;
                     Loader::defaultSettings();
                     ScreenInfo = window;
+                    settings["ScreenWidth"] = ScreenInfo.width;
+                    settings["ScreenHeight"] = ScreenInfo.height;
                     Loader::changeSettings();
                     fText.restart();
                     roads.updateCarWPM();
@@ -611,33 +666,24 @@ namespace RayJump
             }
             void draw()
             {
-                DrawText("This is a game. Objective is to have fun.\n"
-                         "To begin, press the keys on the keyboard and type the letters you see\n"
-                         "List of controls:\n"
-                         "-> Ctrl + R: restarts text\n"
-                         "-> Right click on car: change color\n"
-                         "-> Ctrl + V: put copied text in"
-                         "-> Escape: go to the game screen",0,0,13,BLACK);
+                Vector2 pos = {0,0};
+                DrawTextEx(myFont,HardcodeRayJump::HELP_MESSEAGE.c_str(),pos,13,1,BLACK);
             }
         }helpScreen;
         class ColorPicker : public ExtraRaylib::ScreenWrapper
         {
             public:
-            ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(30,200,200,60);
-            void setColor(Color& color)
-            {
-                RGBcolor.setColor(color);
-            }
+            ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(30,250,200,60);
             void run()
             {
+                RGBcolor.setColor(selectedCar->color);
                 RGBcolor.run();
                 if(IsKeyDown(KEY_ESCAPE))
                     currentScreen.setScreen(ScreenStuff::screens::Sgame);
-
             }
             void draw()
             {
-                player->draw();
+                selectedCar->draw();
                 RGBcolor.draw();
             }
         } colorPicker;
@@ -660,7 +706,6 @@ namespace RayJump
                 title.init();
 
                 currentScreen.setScreen(ScreenStuff::screens::Stitle);
-                colorPicker.setColor(player->color);
                 while(!WindowShouldClose())
                 {
                     ExtraRaylib::mouseAction = MOUSE_CURSOR_DEFAULT;
@@ -674,7 +719,7 @@ namespace RayJump
                         break;
                     SetMouseCursor(ExtraRaylib::mouseAction);
                 }
-                saveSettings();
+                game->roads.saveColors();
             }
             static void updateScreenVariables()
             {
@@ -682,19 +727,11 @@ namespace RayJump
                 settings["ScreenHeight"] = GetScreenHeight();
                 ScreenInfo = {0,0,(float)GetScreenWidth(),(float)GetScreenHeight()};
             }
-            static void saveSettings()
-            {
-                settings["PlayerR"] = player->color.r;
-                settings["PlayerG"] = player->color.g;
-                settings["PlayerB"] = player->color.b;
-            }
             static void loadSettings()
             {
-                 game = new NormalGame();
-                 player = &(game->roads.cars[0]);
-                 player->color.r = settings["PlayerR"];
-                 player->color.g = settings["PlayerG"];
-                 player->color.b = settings["PlayerB"];
+                game = new NormalGame();
+                player = &(game->roads.cars[0]);
+                game->roads.loadColors();
             }
         };
     }

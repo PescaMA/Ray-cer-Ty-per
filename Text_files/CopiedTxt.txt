@@ -1,1 +1,0 @@
-"You can type. Grats!",rect,50,
