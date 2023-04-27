@@ -220,6 +220,10 @@ namespace ExtraRaylib
         Font *font;
         int sepTextSize = 0;
         public:
+        std::string getText()
+        {
+            return u16_to_utf8(text);
+        }
         boxText():MAX_LINES(-1){}
         boxText(std::u16string text, Rectangle box, int max_nr_lines,int font_size,Font *font)
         :text(text), rect(box), font_size(std::max(font_size,8)), MAX_LINES(max_nr_lines), font(font){

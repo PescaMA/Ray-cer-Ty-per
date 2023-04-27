@@ -11,5 +11,5 @@ GamesPlayed 0
 PlayerB 0
 PlayerG 0
 PlayerR 250
-ScreenHeight 375
-ScreenWidth 500
+ScreenHeight 480
+ScreenWidth 893

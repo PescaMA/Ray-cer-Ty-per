@@ -41,7 +41,7 @@ namespace RayJump
             defaultSettings();
             readSettings();
             InitWindow(ScreenInfo.width,ScreenInfo.height,"Rayjump");
-            SetWindowMinSize(500,375);
+            SetWindowMinSize(720,480);
             BeginDrawing();
             ClearBackground(RAYWHITE);
             float width = std::min(ScreenInfo.width,ScreenInfo.height * 865 / 553);
@@ -553,6 +553,8 @@ namespace RayJump
             void run()
             {
                 runButtons();
+                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_C))
+                    SetClipboardText(fText.getText().c_str());
                 if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
                     fText.restart();
                 if(fText.finished && (IsKeyPressed(KEY_ESCAPE) ||
@@ -637,17 +639,18 @@ namespace RayJump
             }
             void drawFinish()
             {
+                bool en=currentLanguage->first == "english";
                 Rectangle rect = {ScreenInfo.x + ScreenInfo.width*0.1f,ScreenInfo.y + ScreenInfo.height*0.1f,ScreenInfo.width*0.8f,ScreenInfo.height*0.8f};
                 DrawRectangleRec(rect,LIGHTGRAY);
                 Rectangle Header = {rect.x,rect.y,rect.width,rect.height*0.2f};
                 DrawRectangleRec(Header,YELLOW);
                 using ExtraRaylib::TxtAligned;
-                TxtAligned winMessage(&myFont,"You can type. Grats!",rect,50,10,36,GREEN,BLANK);
-                TxtAligned characters(&myFont,TextFormat("You just typed %i characters with: ",(int)fText.maxChar),rect,50,30,20,BLACK,BLANK);
-                TxtAligned wpm(&myFont,TextFormat("%i wpm",(int)fText.wpm),rect,20,50,20,BLACK,BLANK);
+                TxtAligned winMessage(&myFont,en?"You can type. Congratulations!":"Poți tasta. Felicitări!",rect,50,10,36,GREEN,BLANK);
+                TxtAligned characters(&myFont,TextFormat(en?"You just typed %i characters with: ":"Tocmai ați tastat %i caractere cu:",(int)fText.maxChar),rect,50,30,20,BLACK,BLANK);
+                TxtAligned wpm(&myFont,TextFormat(en?"%i WPM":"%i CuvPeMin",(int)fText.wpm),rect,20,50,20,BLACK,BLANK);
                 TxtAligned accuracy(&myFont,fText.getAccuracy(),rect,80,50,20,BLACK,BLANK);
-                TxtAligned gamesPlayed(&myFont,TextFormat("%i games played previously",(int)settings["GamesPlayed"]),rect,0,80,20,BLACK,BLANK);
-                TxtAligned avgWpm(&myFont,TextFormat("%i average wpm previously",(int)settings["AverageWPM"]),rect,0,90,20,BLACK,BLANK);
+                TxtAligned gamesPlayed(&myFont,TextFormat(en?"%i games played previously":"%i jocuri jucate înainte",(int)settings["GamesPlayed"]),rect,0,80,20,BLACK,BLANK);
+                TxtAligned avgWpm(&myFont,TextFormat(en?"%i average WordsPerMin previously":"%i = media cuvintelor pe minut înainte" ,(int)settings["AverageWPM"]),rect,0,90,20,BLACK,BLANK);
                 winMessage.draw(true);
                 accuracy.draw(true);
                 wpm.draw(true);
@@ -667,7 +670,11 @@ namespace RayJump
             void draw()
             {
                 Vector2 pos = {0,0};
-                DrawTextEx(myFont,HardcodeRayJump::HELP_MESSEAGE.c_str(),pos,13,1,BLACK);
+                float pixel = currentLanguage==COUNTRY_TEXT.begin()
+                    ?std::min(ScreenInfo.width/700,ScreenInfo.height/400)
+                    :std::min(ScreenInfo.width/750,ScreenInfo.height/400);
+                const std::string *str = currentLanguage==COUNTRY_TEXT.begin()? &HardcodeRayJump::HELP_MESSEAGE : &HardcodeRayJump::HELP_MESSEAGE_RO;
+                DrawTextEx(myFont,(*str).c_str(),pos,13.0f* pixel,1,BLACK);
             }
         }helpScreen;
         class ColorPicker : public ExtraRaylib::ScreenWrapper

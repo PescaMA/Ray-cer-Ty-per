@@ -3,25 +3,46 @@
 typedef std::map <std::string,std::vector<std::string>> CountryMap;
 namespace HardcodeRayJump
 {
-std::string HELP_MESSEAGE = R"(Welcome to [Game Name]
+const std::string HELP_MESSEAGE = R"(Welcome to RayJump (also known as Ray-cer Typer)
 
 Objective:
-Type out the given text as fast as you can.
+    Type out the given text as fast as you can.
 
 Mechanics:
-
     Type the first letter to begin a new race.
     Correctly typed characters will turn green, while incorrect ones will turn red.
     The game ends when the player types out all the words in the list and presses Enter.
-    To turn to the main game screen press Escape.
+    To go back to the game press Esc.
     Right Click on a car to change its color;
+    Press Ctrl + C to copy and Ctrl + V to set your own text.
+    You only need to use the english alphabet even for Romanian diacritics.
 
 Typing Tips:
-
     Sit with your back straight and your feet flat on the ground.
     Rest your index fingers on the home keys (F and J);
     Type with a smooth and steady rhythm.
     Practice typing regularly to improve your speed and accuracy.)";
+
+const std::string HELP_MESSEAGE_RO = R"(Bine ați venit la RayJump (cunoscut și sub numele de Ray-cer Typer)
+
+Obiectiv:
+    Scrieți textul dat cât de repede puteți.
+
+Mecanică:
+    Tastați prima literă pentru a începe o nouă cursă.
+    Caracterele tastate corect vor deveni verzi, în timp ce cele incorecte vor deveni roșii.
+    Jocul se termină atunci când jucătorul tastează toate cuvintele din listă și apasă Enter.
+    Pentru a vă întoarce la joc apăsați Esc.
+    Faceți clic dreapta pe o mașină pentru a-i schimba culoarea;
+    Apăsați Ctrl + C pentru a copia și Ctrl + V pentru a seta propriul text.
+    Trebuie să folosiți doar alfabetul englezesc, chiar și pentru diacriticele românești.
+
+Sfaturi de dactilografiere:
+    Stați cu spatele drept și cu picioarele pe pământ.
+    Sprijiniți-vă degetele arătătoare pe tastele de pornire (F și J);
+    Tastați cu un ritm lin și constant.
+    Exersați dactilografierea în mod regulat pentru a vă îmbunătăți viteza și acuratețea.)";
+
 const CountryMap COUNTRY_TEXT =
 {
     {
