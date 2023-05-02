@@ -1,5 +1,5 @@
-AverageWPM 10
-BestWPM 11
+AverageWPM 40.3869
+BestWPM 62.1871
 Car1B 0
 Car1G 250
 Car1R 0
@@ -7,9 +7,10 @@ Car2B 250
 Car2G 0
 Car2R 0
 CopiedTextPos -1
-GamesPlayed 0
+GamesPlayed 12
+IsWindowMaximized 0
 PlayerB 0
 PlayerG 0
 PlayerR 250
 ScreenHeight 480
-ScreenWidth 893
+ScreenWidth 923

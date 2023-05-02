@@ -18,9 +18,11 @@ char16_t flattenString(char16_t c)
     u"TŢȚŤ",
     u"iîïìíīĩī",
     u"IÎÏÌÍĪĨ"};
-    for(int i=0;i<diacritics.size();i++)
+    int n = diacritics.size();
+    for(int i=0;i<n;i++)
     {
-        for(int j=0;j<diacritics[i].size();j++)
+        int m = diacritics[i].size();
+        for(int j=0;j<m;j++)
             if(diacritics[i][j] == c) return diacritics[i][0];
     }
     return c;
@@ -46,7 +48,8 @@ int getLineCount(std::string filePath)
 int* u16_to_codepoint(std::u16string font)
 {
     static int *result= new int(font.size());
-    for(int i=0;i<font.size();i++){
+    int n = font.size();
+    for(int i=0;i<n;i++){
         result[i]=font[i];
     }
     return result;
@@ -74,11 +77,11 @@ void ignoreLines(std::ifstream &fin,int lineNr)
 namespace ExtraRaylib
 {
     int mouseAction;
-    void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination)
+    void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination,Color color)
     {
         /// not entirely sure what all the parameters mean but seems to work.
         NPatchInfo ninePatchInfo = { drawnPart, 0, 0, 0, 0, NPATCH_NINE_PATCH };
-        DrawTextureNPatch(asset, ninePatchInfo, destination, {0,0}, 0.0f, WHITE);
+        DrawTextureNPatch(asset, ninePatchInfo, destination, {0,0}, 0.0f, color);
     }
     bool isShiftDown()
     {
@@ -273,7 +276,7 @@ namespace ExtraRaylib
                 addedWord.erase(0,letters);
                 pos += letters;
                 letters = rect.width / letterSize;
-                if(letters > addedWord.size())
+                if(letters > (int)addedWord.size())
                 {
                     letters = addedWord.size();
                     lineSize = letters * letterSize;
@@ -302,17 +305,20 @@ namespace ExtraRaylib
 
     struct Slider
     {
-        int len = 100;
-        int x,y,radius;
+        float len = 100;
+        float x,y,radius;
+        Rectangle defaultRect;
         double prc = 0;
         bool isSel = false;
-        Slider(int x,int y,int length,int radius):len(length),x(x),y(y),radius(radius)
+        Slider(float x,float y,float length,float radius):len(length),x(x),y(y),
+        radius(radius)
+        {defaultRect = {x,y,len,this->radius};}
+        void run(float pixel)
         {
-            if(radius < 6) radius = 6;
-            if(radius > 30) radius = 30;
-        }
-        void run()
-        {
+            x = defaultRect.x * pixel;
+            y = defaultRect.y * pixel;
+            len = defaultRect.width * pixel;
+            radius = defaultRect.height * pixel;
             int mouseX = GetMouseX();
             int mouseY = GetMouseY();
             if(IsMouseButtonPressed(0))
@@ -328,7 +334,7 @@ namespace ExtraRaylib
                 isSel = false;
             if(!isSel)
                 return;
-            int sliderX = mouseX;
+            float sliderX = mouseX;
             sliderX = std::min(sliderX, x+len);
             sliderX = std::max(sliderX, x);
             prc = (sliderX - x)*1.0 / len;
@@ -344,24 +350,30 @@ namespace ExtraRaylib
     struct Choose_RGB
     {
         int x,y,width,height;
+        Rectangle defaultRect;
         Color *directColor = nullptr;
         Slider Sr,Sg,Sb;
-        Choose_RGB(int x,int y,int width,int H):x(x),y(y),width(width),height(H),
-        Sr(x+10,(int)(y+0.25*height),width * 0.5,height * 0.1),
-        Sg(x+10,(int)(y+0.50*height),width * 0.5,height * 0.1),
-        Sb(x+10,(int)(y+0.75*height),width * 0.5,height * 0.1){}
+        Font *myFont;
+        Choose_RGB(Font &font,float x,float y,float width,float height):
+            x(x),y(y),width(width),height(height),
+            Sr(x+10,(int)(y+0.25*height),width * 0.5,height * 0.1),
+            Sg(x+10,(int)(y+0.50*height),width * 0.5,height * 0.1),
+            Sb(x+10,(int)(y+0.75*height),width * 0.5,height * 0.1),
+            myFont(&font)
+            {defaultRect = {x,y,width,height};}
         void draw()
         {
             DrawRectangle(x,y,width,height,GRAY);
-            int left = Sr.x + Sr.len + Sr.radius;
-            int right = x + width;
-            int center = (left + right)/2;
+            float left = Sr.x + Sr.len + Sr.radius;
+            float right = x + width;
+            float center = (left + right)/2;
+            float radius = Sr.radius;
             Sr.draw();
-            DrawText("Red",center - MeasureText("Red",Sr.radius)/2,Sr.y - Sr.radius * 0.7f,Sr.radius,BLACK);
+            DrawTextEx(*myFont,"Red",{center - MeasureText("Red",radius)/2,Sr.y - radius * 0.7f},radius * 2,1,BLACK);
             Sg.draw();
-            DrawText("Green",center - MeasureText("Green",Sg.radius)/2,Sg.y - Sg.radius * 0.7f,Sg.radius,BLACK);
+            DrawTextEx(*myFont,"Green",{center - MeasureText("Green",radius)/2,Sg.y - radius * 0.7f},radius * 2,1,BLACK);
             Sb.draw();
-            DrawText("Blue",center - MeasureText("Blue",Sb.radius)/2,Sb.y - Sb.radius * 0.7f,Sb.radius,BLACK);
+            DrawTextEx(*myFont,"Blue",{center - MeasureText("Blue",radius)/2,Sb.y - radius * 0.7f},radius * 2,1,BLACK);
         }
         void setColor(Color &color)
         {
@@ -370,11 +382,15 @@ namespace ExtraRaylib
             Sg.prc = (double)color.g/255;
             Sb.prc = (double)color.b/255;
         }
-        void run()
+        void run(float pixel)
         {
-            Sr.run();
-            Sg.run();
-            Sb.run();
+            x = defaultRect.x * pixel;
+            y = defaultRect.y * pixel;
+            width = defaultRect.width * pixel;
+            height = defaultRect.height * pixel;
+            Sr.run(pixel);
+            Sg.run(pixel);
+            Sb.run(pixel);
             setRGBColor();
         }
         void setRGBColor()
@@ -393,6 +409,7 @@ namespace ExtraRaylib
     };
     struct Button
     {
+        Font *font;
         std::string text;
         Rectangle rect;
         struct ColorPair
@@ -403,7 +420,6 @@ namespace ExtraRaylib
         float thickness;
         bool isHovering;
         bool forceHover;
-        Font *font;
         Button(){}
         Button(Font &font,std::string text,int startX,int startY,int fontSize,Color color,Color hoverColor)
         :font(&font),text(text),fontSize(fontSize)

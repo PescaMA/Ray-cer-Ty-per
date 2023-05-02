@@ -19,6 +19,9 @@ namespace RayJump
     Texture2D CAR_ASSET_STRUCTURE;
     Texture2D CAR_ASSET_COLOR;
     Font myFont;
+    float minWindowWidth = 720;
+    float minWindowHeight = 480;
+    float pixel = 1.0f;
     const std::vector<std::string> carNamesRO={
         "<- Tu (joc curent)",
         "<- Jocul cel mai bun",
@@ -42,8 +45,15 @@ namespace RayJump
             readSettings();
             InitWindow(ScreenInfo.width,ScreenInfo.height,"Rayjump");
             SetWindowMinSize(720,480);
+
+            if(settings["IsWindowMaximized"] == 1.0f)
+                MaximizeWindow();
+            SetWindowIcon(LoadImage("Images/icon.png"));
+
+            ///While the inefficient font loading takes place, we draw the start screen
             BeginDrawing();
             ClearBackground(RAYWHITE);
+
             float width = std::min(ScreenInfo.width,ScreenInfo.height * 865 / 553);
             float height = std::min(ScreenInfo.height,ScreenInfo.width / 865 * 553);
             ExtraRaylib::drawTextureDest(
@@ -53,10 +63,13 @@ namespace RayJump
                     ScreenInfo.width/2 - width/2,
                     ScreenInfo.height/2 - height/2,
                     width, height
-                }
+                },WHITE
             );
             EndDrawing();
-            myFont = LoadFontEx("liberation_mono.ttf", 18*4, NULL, 9000);
+
+
+            myFont = LoadFontEx("liberation_mono.ttf", 24, NULL, 9000);
+            SetTextureFilter(myFont.texture, TEXTURE_FILTER_BILINEAR);
             SetExitKey(0);
             CAR_ASSET_STRUCTURE = LoadTexture("Images/carStructure.png");
             CAR_ASSET_COLOR = LoadTexture("Images/carColor.png");
@@ -66,6 +79,11 @@ namespace RayJump
         {
             settings["ScreenWidth"] = 960;
             settings["ScreenHeight"] = 540;
+            settings["BestWPM"] = 11;
+            settings["GamesPlayed"] = 0;
+            settings["AverageWPM"] = 10;
+            settings["CopiedTextPos"] = -1;
+            settings["IsWindowMaximized"]=false;
             settings["PlayerR"] = 250;
             settings["PlayerG"] = 0;
             settings["PlayerB"] = 0;
@@ -75,10 +93,7 @@ namespace RayJump
             settings["Car2R"] = 0;
             settings["Car2G"] = 0;
             settings["Car2B"] = 250;
-            settings["BestWPM"] = 11;
-            settings["GamesPlayed"] = 0;
-            settings["AverageWPM"] = 10;
-            settings["CopiedTextPos"] = -1;
+
 
             ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
         }
@@ -107,6 +122,16 @@ namespace RayJump
         }
         static void changeSettings()
         {
+            if(!IsWindowMaximized())
+            {
+                settings["ScreenWidth"] = GetScreenWidth();
+                settings["ScreenHeight"] = GetScreenHeight();
+            }
+            if(IsWindowMaximized())
+                settings["IsWindowMaximized"]=1.0f;
+            else
+                settings["IsWindowMaximized"]=0.0f;
+
             std::ofstream fout("Text_files/settings.txt");
             if(!fout)return;
             for(std::map<std::string,float>::iterator it=settings.begin();it!=settings.end();it++)
@@ -130,6 +155,7 @@ namespace RayJump
         static int const END = 300;
         static int const WIDTH = 120; /// sprite width
         static int const HEIGHT = 48; /// sprite height
+        Rectangle SPRITE = {0,0,WIDTH,HEIGHT};
 
         float xPr = 0;
         float const y;
@@ -138,33 +164,38 @@ namespace RayJump
         const std::string *name;
 
         Color color = {0,222,0,255};
-        Car():y(0),id(999){getName();}
-        Car(float y,int id):y(y),id(id){getName();}
+        Car():y(0),id(999){changeName();}
+        Car(float y,int id):y(y),id(id){changeName();}
         void run()
-        {true;}
-        void getName()
+        {}
+        void changeName()
         {
-            if(id < carNamesEN.size())
+            if(id < (int)carNamesEN.size())
                 name = currentLanguage==COUNTRY_TEXT.begin()?&(carNamesEN[id]):&(carNamesRO[id]);///currentLanguage->first;
             else
                 name = new std::string("Random car");
         }
         bool rightClicked()
         {
-            return IsMouseButtonDown(1) && CheckCollisionPointRec(GetMousePosition(),{getPos(),y,WIDTH,HEIGHT});
+            return IsMouseButtonDown(1) && CheckCollisionPointRec(GetMousePosition(),{getPos(),y * pixel,WIDTH * pixel,HEIGHT * pixel});
         }
         float getPos()
         {
             int roadWidth = ScreenInfo.width - START*4;
-            return START + std::max((roadWidth-WIDTH),0) * xPr;
+            return START + std::max((int)(roadWidth-WIDTH * pixel),0) * xPr;
         }
         void draw(bool isGameStarted = false)
         {
-            getName();
-            DrawTexture(CAR_ASSET_COLOR,getPos(),y,color);
-            DrawTexture(CAR_ASSET_STRUCTURE,getPos(),y,WHITE);
+            changeName();
+            Rectangle destinationCar = SPRITE;
+            destinationCar.x = getPos();
+            destinationCar.y = y*pixel;
+            destinationCar.width *=pixel;
+            destinationCar.height *=pixel;
+            ExtraRaylib::drawTextureDest(CAR_ASSET_COLOR,SPRITE,destinationCar,color);
+            ExtraRaylib::drawTextureDest(CAR_ASSET_STRUCTURE,SPRITE,destinationCar,WHITE);
             if(!isGameStarted){
-                DrawTextEx(myFont,(*name).c_str(),{getPos() + WIDTH + 5,y + 15},18,1,BLACK);
+                DrawTextEx(myFont,(*name).c_str(),{destinationCar.x + destinationCar.width + 5 * pixel,(y + 15)*pixel},18 * pixel,1,BLACK);
             }
         }
     }; ///non const statics need to be declared
@@ -235,7 +266,7 @@ namespace RayJump
         {
             int const timeCorrection = 12000; /// /1000 /60 * 5 = miliseconds to seconds to minutes; words to characters
             /// first car is the player and has variable wpm so we ignore it.
-            for(int i=1;i<cars.size();i++)
+            for(int i=1;i<(int)cars.size();i++)
             {
                 float characters =  std::round(1.0f * cars[i].wpm * timeMS / timeCorrection);
                 float prc = std::min(characters/characterCount, 1.0f); /// can't go more than 100%
@@ -252,12 +283,12 @@ namespace RayJump
         }
         void draw(bool isStarted = false)
         {
-            DrawRectangle(Xstart,Ystart,roadWidth,nrOfRoads*Ylength,GRAY);
+            DrawRectangle(Xstart,Ystart*pixel,roadWidth,nrOfRoads*Ylength*pixel,GRAY);
             int sz = cars.size();
             for(int i=0; i<sz; i++)
             {
                 cars[i].draw(isStarted);
-                Vector2 position = {Xstart + roadWidth + 10.0f,cars[i].y + 14.0f};
+                Vector2 position = {Xstart + roadWidth + 10.0f,(cars[i].y + 14.0f)*pixel};
                 DrawTextEx(*font,TextFormat("%i wpm",cars[i].wpm),position,20,1,BLACK);
             }
 
@@ -401,7 +432,6 @@ namespace RayJump
         {
             if(bl==u"" && !stop && linePos<sepTextSize)
                 bl = sepText[linePos];
-            Color LIGHT_GREEN = {115, 246, 155,255};
             Color LIGT_RED = {250, 181, 181, 255};
             ExtraRaylib::drawtextUnicode(*font,gr,{rect.x,rect.y},font_size,1,GREEN,BLANK);
             ExtraRaylib::drawtextUnicode(*font,re,{rect.x + ExtraRaylib::MeasureTextUnicode(*font,gr,font_size,1),rect.y},font_size,1,BLACK,LIGT_RED);
@@ -411,12 +441,23 @@ namespace RayJump
         {
             if(text.size() == 0)
                 return;
-            DrawRectangleRec(rect,YELLOW);
+            Rectangle newRect = rect;
+            newRect.y *= pixel;
+
+            newRect.width *= pixel;
+            newRect.height *= pixel;
+            int oldFontSize = font_size;
+            font_size*=pixel;
+            float oldRectY = rect.y;
+            rect.y *= pixel;
+            DrawRectangleRec(newRect,YELLOW);
             if(sepTextSize == 0)
                 setSepText();
             drawDominantLine();
             for(int i=1;i<MAX_LINES && i+linePos < sepTextSize;i++)
             ExtraRaylib::drawtextUnicode(*font, sepText[i+linePos],{rect.x,rect.y + font_size*i},font_size,1,BLACK,BLANK);
+            font_size = oldFontSize;
+            rect.y =oldRectY;
         }
     };
     class savedText
@@ -451,7 +492,11 @@ namespace RayJump
         }
         static void saveClipboardText()
         {
-            std::string copiedText = GetClipboardText();
+            std::string copiedText;
+            if(GetClipboardText() == NULL)
+                copiedText = "Empty clipboard.";
+            else
+                copiedText = GetClipboardText();
             _formatClipboard(copiedText);
             settings["CopiedTextPos"] = 1;
             std::ofstream fout("Text_files/CopiedTxt.txt");
@@ -535,7 +580,7 @@ namespace RayJump
                         ScreenInfo.height/2 - height/2,
                         width,
                         height
-                    }
+                    },WHITE
                 );
             }
         }title;
@@ -547,7 +592,7 @@ namespace RayJump
             ExtraRaylib::Button langButton = ExtraRaylib::Button(myFont,currentLanguage->first,300,0,24,BLACK,YELLOW);
             ExtraRaylib::Button help = ExtraRaylib::Button(myFont,"Help",300,0,24,BLACK,YELLOW);
             ExtraRaylib::Button deleteData = ExtraRaylib::Button(myFont,"Erase all data",300,0,24,BLACK,RED);
-            NormalGame():fText({40,230,430,100},u"default text."){
+            NormalGame():fText({40,230,600,100},u"default text."){
                 fText.setText(savedText::getText());
             }
             void run()
@@ -579,13 +624,9 @@ namespace RayJump
                 fText.run();
                 roads.run();
                 int nr = roads.getCarRightClicked();
-                if(nr != -1)
-                {
+                if(nr != -1 && fText.startTime==0)
+                { /// if we selected a car and the race hasn't started we can change their color.
                     selectedCar = &roads.cars[nr];
-                    currentScreen.setScreen(ScreenStuff::screens::SRGBpick);
-                }
-                if(nr == 0) /// we can only custimize the first car (our own)
-                {
                     currentScreen.setScreen(ScreenStuff::screens::SRGBpick);
                 }
             }
@@ -620,6 +661,7 @@ namespace RayJump
                     Loader::changeSettings();
                     fText.restart();
                     roads.updateCarWPM();
+                    roads.loadColors();
                 }
             }
             void draw()
@@ -639,21 +681,28 @@ namespace RayJump
             }
             void drawFinish()
             {
-                bool en=currentLanguage->first == "english";
+                bool en= (currentLanguage->first == "english");
                 Rectangle rect = {ScreenInfo.x + ScreenInfo.width*0.1f,ScreenInfo.y + ScreenInfo.height*0.1f,ScreenInfo.width*0.8f,ScreenInfo.height*0.8f};
                 DrawRectangleRec(rect,LIGHTGRAY);
                 Rectangle Header = {rect.x,rect.y,rect.width,rect.height*0.2f};
                 DrawRectangleRec(Header,YELLOW);
                 using ExtraRaylib::TxtAligned;
-                TxtAligned winMessage(&myFont,en?"You can type. Congratulations!":"Poți tasta. Felicitări!",rect,50,10,36,GREEN,BLANK);
-                TxtAligned characters(&myFont,TextFormat(en?"You just typed %i characters with: ":"Tocmai ați tastat %i caractere cu:",(int)fText.maxChar),rect,50,30,20,BLACK,BLANK);
-                TxtAligned wpm(&myFont,TextFormat(en?"%i WPM":"%i CuvPeMin",(int)fText.wpm),rect,20,50,20,BLACK,BLANK);
-                TxtAligned accuracy(&myFont,fText.getAccuracy(),rect,80,50,20,BLACK,BLANK);
-                TxtAligned gamesPlayed(&myFont,TextFormat(en?"%i games played previously":"%i jocuri jucate înainte",(int)settings["GamesPlayed"]),rect,0,80,20,BLACK,BLANK);
-                TxtAligned avgWpm(&myFont,TextFormat(en?"%i average WordsPerMin previously":"%i = media cuvintelor pe minut înainte" ,(int)settings["AverageWPM"]),rect,0,90,20,BLACK,BLANK);
+                std::string personalizedWinMessage;
+                if(fText.wpm > settings["BestWPM"] && fText.wpm < 250 && fText.maxChar > 15)
+                    personalizedWinMessage = en?"A new record!":"Un nou record!";
+                else
+                    personalizedWinMessage = en? "You finished a new race. Good job!" : "Ați terminat o nouă cursă. Felicitări!";
+                TxtAligned winMessage(&myFont,personalizedWinMessage.c_str(),rect,50,10,28*pixel,GREEN,BLANK);
+                TxtAligned characters(&myFont,TextFormat(en?"You just typed %i characters with: ":"Tocmai ați tastat %i de caractere cu:",(int)fText.maxChar),rect,50,30,20*pixel,BLACK,BLANK);
+                TxtAligned wpm(&myFont,TextFormat(en?"%i WPM":"%i CuvPeMin",(int)fText.wpm),rect,20,50,24*pixel,BLACK,BLANK);
+                TxtAligned bestWpm(&myFont,TextFormat(en?"%i words per minute in best race":"%i cuvinte pe minute în cea mai bună cursă" ,(int)settings["BestWPM"]),rect,20,60,20*pixel,BLACK,BLANK);
+                TxtAligned accuracy(&myFont,fText.getAccuracy(),rect,80,50,24*pixel,BLACK,BLANK);
+                TxtAligned gamesPlayed(&myFont,TextFormat(en?"%i games played previously":"%i jocuri jucate înainte",(int)settings["GamesPlayed"]),rect,0,80,20*pixel,BLACK,BLANK);
+                TxtAligned avgWpm(&myFont,TextFormat(en?"%i average WordsPerMin previously":"%i = media cuvintelor pe minut înainte" ,(int)settings["AverageWPM"]),rect,0,90,20*pixel,BLACK,BLANK);
                 winMessage.draw(true);
                 accuracy.draw(true);
                 wpm.draw(true);
+                bestWpm.draw();
                 characters.draw();
                 gamesPlayed.draw();
                 avgWpm.draw();
@@ -680,11 +729,11 @@ namespace RayJump
         class ColorPicker : public ExtraRaylib::ScreenWrapper
         {
             public:
-            ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(30,250,200,60);
+            ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(myFont,30,250,200,60);
             void run()
             {
                 RGBcolor.setColor(selectedCar->color);
-                RGBcolor.run();
+                RGBcolor.run(pixel);
                 if(IsKeyDown(KEY_ESCAPE))
                     currentScreen.setScreen(ScreenStuff::screens::Sgame);
             }
@@ -696,7 +745,7 @@ namespace RayJump
         } colorPicker;
         ExtraRaylib::ScreenWrapper* ScreenStuff::getScreen()
         {
-            ExtraRaylib::ScreenWrapper *screen;
+            ExtraRaylib::ScreenWrapper *screen = &title;
             if(now == Sgame) screen = game;
             if(now == SRGBpick) screen = &colorPicker;
             if(now == Stitle) screen = &title;
@@ -730,9 +779,13 @@ namespace RayJump
             }
             static void updateScreenVariables()
             {
-                settings["ScreenWidth"] = GetScreenWidth();
-                settings["ScreenHeight"] = GetScreenHeight();
+                if(!IsWindowMaximized())
+                {
+                    settings["ScreenWidth"] = GetScreenWidth();
+                    settings["ScreenHeight"] = GetScreenHeight();
+                }
                 ScreenInfo = {0,0,(float)GetScreenWidth(),(float)GetScreenHeight()};
+                pixel = std::min(ScreenInfo.width/minWindowWidth,ScreenInfo.height/minWindowHeight);
             }
             static void loadSettings()
             {

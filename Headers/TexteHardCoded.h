@@ -16,6 +16,7 @@ Mechanics:
     Right Click on a car to change its color;
     Press Ctrl + C to copy and Ctrl + V to set your own text.
     You only need to use the english alphabet even for Romanian diacritics.
+    Hold the escape key to quit the game.
 
 Typing Tips:
     Sit with your back straight and your feet flat on the ground.
@@ -36,6 +37,7 @@ Mecanică:
     Faceți clic dreapta pe o mașină pentru a-i schimba culoarea;
     Apăsați Ctrl + C pentru a copia și Ctrl + V pentru a seta propriul text.
     Trebuie să folosiți doar alfabetul englezesc, chiar și pentru diacriticele românești.
+    Țineți apăsat pe tasta Escape pentru a ieși din joc.
 
 Sfaturi de dactilografiere:
     Stați cu spatele drept și cu picioarele pe pământ.
