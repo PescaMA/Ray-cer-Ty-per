@@ -22,6 +22,7 @@ namespace RayJump
     float minWindowWidth = 720;
     float minWindowHeight = 480;
     float pixel = 1.0f;
+
     const std::vector<std::string> carNamesRO={
         "<- Tu (joc curent)",
         "<- Jocul cel mai bun",
@@ -38,7 +39,7 @@ namespace RayJump
         public:
         void load()
         {
-            srand(ExtraRaylib::getTimeMS()); /// setting the random seed to current time
+            srand(getTimeMS()); /// setting the random seed to current time
             SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 
             defaultSettings();
@@ -338,7 +339,7 @@ namespace RayJump
             calculate();
             eraseChr();
             if(startTime == 0 && currentChar !=0)
-                startTime = ExtraRaylib::getTimeMS();
+                startTime = getTimeMS();
             if(linePos == sepTextSize - 1 && bl.empty() && re.empty())
             {
                 if(IsKeyDown(KEY_ENTER))
@@ -354,7 +355,7 @@ namespace RayJump
         int getTime()
         {
             if(startTime == 0)return 0;
-            return std::max(ExtraRaylib::getTimeMS() - startTime,1LL * 1);
+            return std::max(getTimeMS() - startTime,1LL * 1);
         }
         bool isAtEnd(){
             return currentChar == maxChar;
@@ -383,10 +384,10 @@ namespace RayJump
             char16_t c;
             while((c = GetCharPressed()) && !stop)
             {
-                c = flattenString(c);
-                if(currentChar == 0 && c != flattenString(sepText[linePos][charPos]))
+                c = flattenUTF16Char(c);
+                if(currentChar == 0 && c != flattenUTF16Char(sepText[linePos][charPos]))
                     continue;
-                if(c == flattenString(sepText[linePos][charPos]) && re.empty())
+                if(c == flattenUTF16Char(sepText[linePos][charPos]) && re.empty())
                 {
                     gr+=bl[0];
                     currentChar++;
@@ -564,7 +565,7 @@ namespace RayJump
             }
             void run()
             {
-                if(GetKeyPressed() || ExtraRaylib::getSpecialKeyDown()!=-1)
+                if(GetKeyPressed() || ExtraRaylib::getSpecialKeyDown())
                     currentScreen.setScreen(ScreenStuff::screens::Sgame);
             }
             void draw()
@@ -764,7 +765,7 @@ namespace RayJump
                 currentScreen.setScreen(ScreenStuff::screens::Stitle);
                 while(!WindowShouldClose())
                 {
-                    ExtraRaylib::mouseAction = MOUSE_CURSOR_DEFAULT;
+                    ExtraRaylib::cursorType = MOUSE_CURSOR_DEFAULT;
                     updateScreenVariables();
                     currentScreen.getScreen()->run();
                     BeginDrawing();
@@ -773,7 +774,7 @@ namespace RayJump
                     EndDrawing();
                     if(ExtraRaylib::isKeyHeldFor(KEY_ESCAPE,1500))
                         break;
-                    SetMouseCursor(ExtraRaylib::mouseAction);
+                    SetMouseCursor(ExtraRaylib::cursorType);
                 }
                 game->roads.saveColors();
             }

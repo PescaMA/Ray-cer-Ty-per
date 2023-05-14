@@ -1,1 +1,5 @@
-with low amount of characters bestWPM can be very misleading.
+-beautify / simplify code.
+
+Features (semi bugs):
+- check for character majority;
+- when closing don't go to next clipboard line.

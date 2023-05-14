@@ -1,20 +1,37 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_layout_file>
 	<FileVersion major="1" minor="0" />
-	<ActiveTarget name="Release" />
-	<File name="Headers\TexteHardCoded.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<ActiveTarget name="Debug" />
+	<File name="Headers\ExtraRaylib.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="5" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="284" topLine="9" />
+			<Cursor1 position="10541" topLine="157" />
+		</Cursor>
+		<Folding>
+			<Collapse line="10" />
+			<Collapse line="12" />
+			<Collapse line="53" />
+			<Collapse line="58" />
+			<Collapse line="63" />
+			<Collapse line="93" />
+			<Collapse line="102" />
+			<Collapse line="119" />
+			<Collapse line="124" />
+			<Collapse line="128" />
+			<Collapse line="132" />
+			<Collapse line="144" />
+		</Folding>
+	</File>
+	<File name="Headers\TexteHardCoded.h" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="6" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="20281" topLine="163" />
 		</Cursor>
 	</File>
 	<File name="main.cpp" open="1" top="1" tabpos="1" split="0" active="1" splitpos="0" zoom_1="4" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="6535" topLine="168" />
+			<Cursor1 position="16429" topLine="347" />
 		</Cursor>
-	</File>
-	<File name="Headers\ExtraRaylib.h" open="1" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="4" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="14711" topLine="403" />
-		</Cursor>
+		<Folding>
+			<Collapse line="203" />
+		</Folding>
 	</File>
 </CodeBlocks_layout_file>

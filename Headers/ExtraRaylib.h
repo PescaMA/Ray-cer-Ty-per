@@ -6,140 +6,114 @@
 #include <string.h> /// for char functions
 #include <climits>  /// for LONG_MAX
 #include <locale>   /// for transformation between string and u16string
-#include <codecvt>  /// for transformation between string and u16string
-char16_t flattenString(char16_t c)
-{
-    /// gets rid of some diacritics, returning base ascii
-    const std::vector<std::u16string> diacritics = {u"aâäàáåãāăą",
+#include <codecvt>  /// for code conversion
+/// Conversion functions:
+int* u16_to_codepoint(std::u16string u16Str){
+    int *result= new int(u16Str.size());
+    int n = u16Str.size();
+    for(int i=0;i<n;i++)
+        result[i]=u16Str[i];
+    return result;
+}
+std::u32string utf8_to_u32(std::string const& utf8Str) {
+    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> cnv;
+    std::u32string u32s = cnv.from_bytes(utf8Str);
+    return u32s;
+}
+std::u16string utf8_to_u16(std::string const& utf8Str) {
+    std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> cnv;
+    std::u16string u16s = cnv.from_bytes(utf8Str);
+    return u16s;
+}
+std::string u16_to_utf8(const std::u16string& u16Str) {
+    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+    std::string utf8str = convert.to_bytes(u16Str);
+    return utf8str;
+}
+char16_t flattenUTF16Char(char16_t c){
+    /// function converts some diacritics to ASCII
+    static const std::vector<std::u16string> diacritics = {u"aâäàáåãāăą",
     u"AÂÄÀÁÅÃĀĂĄ",
     u"sßšșş",
     u"SẞŠȘŞ",
     u"tţțť",
     u"TŢȚŤ",
     u"iîïìíīĩī",
-    u"IÎÏÌÍĪĨ"};
+    u"IÎÏÌÍĪĨ",
+    u"\"„”"};
     int n = diacritics.size();
     for(int i=0;i<n;i++)
     {
         int m = diacritics[i].size();
         for(int j=0;j<m;j++)
-            if(diacritics[i][j] == c) return diacritics[i][0];
+            if(diacritics[i][j] == c)
+                return diacritics[i][0]; ///first one is ascii.
     }
     return c;
 }
-int getLineCount(std::ifstream &fin)
-{
+/// Utility functions:
+int getLineCount(std::ifstream &fin){
     int initPos = fin.tellg();
     fin.seekg(0);
     int lines = 0;
     while(fin.ignore(LONG_MAX, '\n'))
-        lines++ ;
+        lines++;
     fin.clear();
     fin.seekg(initPos);
     return lines;
 }
-int getLineCount(std::string filePath)
-{
+int getLineCount(std::string filePath){
     std::ifstream fin(filePath);
     int result = getLineCount(fin);
     fin.close();
     return result;
 }
-int* u16_to_codepoint(std::u16string font)
-{
-    static int *result= new int(font.size());
-    int n = font.size();
-    for(int i=0;i<n;i++){
-        result[i]=font[i];
-    }
-    return result;
-}
-std::u32string utf8_to_u32(std::string const& utf8) {
-    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> cnv;
-    std::u32string u32s = cnv.from_bytes(utf8);
-    return u32s;
-}
-std::u16string utf8_to_u16(std::string const& utf8) {
-    std::wstring_convert<std::codecvt_utf8<char16_t>, char16_t> cnv;
-    std::u16string u16s = cnv.from_bytes(utf8);
-    return u16s;
-}
-std::string u16_to_utf8(const std::u16string& u16str) {
-    std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-    std::string utf8str = convert.to_bytes(u16str);
-    return utf8str;
-}
-void ignoreLines(std::ifstream &fin,int lineNr)
-{
+void ignoreLines(std::ifstream &fin,int lineNr){
     while((lineNr--) > 0 )
         fin.ignore(LONG_MAX,'\n');
 }
+double distSquare(double x1,double y1,double x2,double y2){
+    return (x1-x2) * (x1-x2) + (y1-y2) * (y1-y2);
+}
+void align(float &coord,int startCoord,int length,float percent,int textSize){
+        coord=startCoord + length*percent -textSize/2;
+        if(coord + textSize > startCoord + length)
+            coord = startCoord + length - textSize;
+        if(coord<startCoord)
+            coord=startCoord;
+    }
+long long getTimeMS(){
+    using namespace std::chrono;
+    return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+}
+long long getTimeMCS(){
+    using namespace std::chrono;
+    return duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
+}
 namespace ExtraRaylib
 {
-    int mouseAction;
-    void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination,Color color)
-    {
-        /// not entirely sure what all the parameters mean but seems to work.
-        NPatchInfo ninePatchInfo = { drawnPart, 0, 0, 0, 0, NPATCH_NINE_PATCH };
-        DrawTextureNPatch(asset, ninePatchInfo, destination, {0,0}, 0.0f, color);
-    }
-    bool isShiftDown()
-    {
-        return IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-    }
-    bool isControlDown()
-    {
-        return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
-    }
     /************************************
               DIVERSE FUNCTIONS
     ************************************/
-    int getSpecialKeyDown()
-    {
+    int cursorType;
+    bool isShiftDown(){
+        return IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+    }
+    bool isControlDown(){
+        return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    }
+    int getSpecialKeyDown(){
         for(int i=256;i<=301;i++)
             if(IsKeyDown(i))
                 return i;
+        ///these keys include: tab, enter, arrows
         for(int i=340;i<=347;i++)
             if(IsKeyDown(i))
                 return i;
-        return -1;
+        ///these keys include: ALT, SHIFT, CTRL
+        return 0;
     }
-    void drawtextUnicode(Font font, std::u16string text,Vector2 position, int font_size,int spacing,Color color,Color backgroundColor)
-    {
-        /// font has to be monospaced
-        if(text.size() == 0) return;
-        std::string ch;
-        ch+=text[0];
-        float charSize = MeasureTextEx(font,ch.c_str(),font_size,spacing).x;
-        DrawRectangle(position.x,position.y,text.size() * charSize ,font_size,backgroundColor);
-        while(!text.empty())
-        {
-            DrawTextCodepoint(font,text[0],position,font_size,color);
-            std::string a;
-            a+=text[0];
-            position.x += MeasureTextEx(font,a.c_str(),font_size,spacing).x;
-            text.erase(0,1);
-        }
-
-    }
-    float MeasureTextUnicode(Font font,std::u16string text,int font_size,float spacing)
-    { /// Font must be monospaced!
-        int length = text.size();
-        if(length == 0) return 0.0f;
-        return length * MeasureTextEx(font,"a",font_size,spacing).x;
-    }
-    long long getTimeMS()
-    {
-        using namespace std::chrono;
-        return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-    }
-    long long getTimeMCS()
-    {
-        using namespace std::chrono;
-        return duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
-    }
-    bool isKeyHeldFor(int key,int durationMS)
-    {
+    bool isKeyHeldFor(int key,int durationMS){
         long long currentTime = getTimeMS();
         static std::map<int,long long> timeMap;
         if(IsKeyPressed(key))
@@ -151,37 +125,49 @@ namespace ExtraRaylib
         }
         return (currentTime - timeMap[key] >= durationMS);
     }
-    void align(float &coord,int startCoord,int length,float percent,int textSize)
-    {
-        coord=startCoord + length*percent -textSize/2;
-        if(coord + textSize > startCoord + length)
-            coord = startCoord + length - textSize;
-        if(coord<startCoord)
-            coord=startCoord;
+    void drawTextureDest(Texture2D asset, Rectangle drawnPart, Rectangle destination,Color color){
+        /// only way to scale an image seems to be a "nine patch", which can be considered
+        /// overkill since I had to ignore some functionality of it that I don't fully understand.
+        NPatchInfo ninePatchInfo = { drawnPart, 0, 0, 0, 0, NPATCH_NINE_PATCH };
+        DrawTextureNPatch(asset, ninePatchInfo, destination, {0,0}, 0.0f, color);
+    }
+    float MeasureTextUnicode(Font font,std::u16string text,int font_size,float spacing){ /// Font must be monospaced!
+        int length = text.size();
+        if(length == 0) return 0.0f;
+        return length * MeasureTextEx(font,"a",font_size,spacing).x;
+    }
+    void drawtextUnicode(Font monoFont, std::u16string text,Vector2 position, int font_size,
+                         int spacing,Color color,Color backgroundColor){
+        if(text.size() == 0) return;
+        float charSize = MeasureTextEx(monoFont,"a",font_size,spacing).x;
+        DrawRectangle(position.x,position.y,text.size() * charSize ,font_size,backgroundColor);
+        while(!text.empty())
+        {
+            DrawTextCodepoint(monoFont,text[0],position,font_size,color);
+            text.erase(0,1);
+            position.x += charSize;
+        }
     }
 
     /************************************
                 TEXT CLASSES
     ************************************/
-
-    struct Txt
-    {
+    struct Txt{
         Font *font; /// pointer so we can load it later
         float x,y,fontSize;
         char text[105];
         Color color,backgroundColor;
         Txt(){}
         Txt(Font *font,char const text[105],int x,int y,int fontSize,Color color,Color backgroundColor)
-        :font(font),x(x),y(y),fontSize(fontSize),color(color),backgroundColor(backgroundColor)
-        {
+        :font(font),x(x),y(y),fontSize(fontSize),color(color),backgroundColor(backgroundColor){
             strcpy(this->text,text);
         }
         void draw(bool shouldUnderline=false)
         {
             Rectangle background = {x,y,MeasureTextEx(*font,text,fontSize,1).x,MeasureTextEx(*font,text,fontSize,1).y};
             DrawRectangleRec(background,backgroundColor);
-
             DrawTextEx(*font,text,{x,y},fontSize,1,color);
+
             if(shouldUnderline)
                 underline();
         }
@@ -193,8 +179,7 @@ namespace ExtraRaylib
             DrawLineEx(init,endp,fontSize/10+1,color);
         }
     };
-    struct TxtAligned : public Txt
-    {
+    struct TxtAligned : public Txt{
         float xPercent,yPercent;
         Rectangle *container;
         TxtAligned(){}
@@ -207,9 +192,8 @@ namespace ExtraRaylib
         }
         void align()
         {
-            ///void align(float &coord,int startCoord,int length,int percent,int textSize)
-            ExtraRaylib::align(x,container->x,container->width,xPercent,MeasureTextEx(*font,text,fontSize,1).x);
-            ExtraRaylib::align(y,container->y,container->height,yPercent,fontSize);
+            ::align(x,container->x,container->width,xPercent,MeasureTextEx(*font,text,fontSize,1).x);
+            ::align(y,container->y,container->height,yPercent,fontSize);
         }
     };
     class boxText
@@ -223,8 +207,7 @@ namespace ExtraRaylib
         Font *font;
         int sepTextSize = 0;
         public:
-        std::string getText()
-        {
+        std::string getText(){
             return u16_to_utf8(text);
         }
         boxText():MAX_LINES(-1){}
@@ -234,55 +217,50 @@ namespace ExtraRaylib
         }
         void setSepText()
         {
-            /// probably overcomplicated
             int sz = text.size();
             if(!sz) return;
-            int pos = 0;
-            int nr = 0;
             sepText.emplace_back();
+            int pos = 0;
             float lineSize = 0;
             while(pos < sz)
             {
-                int extra = 0;
-                for(extra = 0;extra + pos < sz && text[extra+pos]!=' ';extra++);
-                std::u16string addedWord = text.substr(pos,extra+1);
+                int wordLength;
+                for(wordLength = 0;wordLength + pos < sz && text[wordLength+pos]!=' ';wordLength++);
+                std::u16string addedWord = text.substr(pos,wordLength+1);
                 float wordSize = MeasureTextUnicode(*font,addedWord,font_size,1);
-                if(wordSize > rect.width)
-                {
-                    bigWord(addedWord,nr,pos,lineSize);
+                pos += wordLength + 1;
+                if(wordSize > rect.width){/// words that can't fit in a line
+                    bigWord(addedWord,lineSize);
                     continue;
                 }
                 lineSize+=wordSize;
                 if(lineSize > rect.width)
                 {
-                    nr++;
                     sepText.emplace_back();
                     lineSize = wordSize;
                 }
 
-                sepText[nr]+=addedWord;
-
-                pos += extra + 1;
+                sepText.back()+=addedWord;
             }
             sepTextSize = sepText.size();
         }
-        void bigWord(std::u16string addedWord,int &nr,int&pos,float &lineSize)
+        void bigWord(std::u16string addedWord,float &lineSize)
         {
             float letterSize = MeasureTextUnicode(*font,u"a",font_size,1);
             int letters = (rect.width - lineSize) / letterSize;
+            sepText.back() += addedWord.substr(0,letters);
+            addedWord.erase(0,letters);
             while(!addedWord.empty())
             {
-                sepText[nr] += addedWord.substr(0,letters);
-                addedWord.erase(0,letters);
-                pos += letters;
+                sepText.emplace_back();
                 letters = rect.width / letterSize;
-                if(letters > (int)addedWord.size())
+                if(letters > addedWord.size())
                 {
                     letters = addedWord.size();
                     lineSize = letters * letterSize;
                 }
-                nr++;
-                sepText.emplace_back();
+                sepText.back() += addedWord.substr(0,letters);
+                addedWord.erase(0,letters);
             }
         }
         void draw(int linePos = 0)
@@ -294,10 +272,7 @@ namespace ExtraRaylib
                 ExtraRaylib::drawtextUnicode(*font,sepText[i+linePos].c_str(),{rect.x,rect.y+i*font_size},font_size,1,BLACK,BLANK);
         }
     };
-    double distSquare(int x1,int y1, int x2,int y2)
-    {
-        return (x1-x2) * (x1-x2) + (y1-y2) * (y1-y2);
-    }
+
 
     /************************************
               DIVERSE CLASSES
@@ -464,8 +439,8 @@ namespace ExtraRaylib
         }
         void align(int xPrc,int yPrc,Rectangle container)
         {
-            ExtraRaylib::align(rect.x,container.x,container.width,xPrc/100.0f,rect.width);
-            ExtraRaylib::align(rect.y,container.y,container.height,yPrc/100.0f,rect.height);
+            ::align(rect.x,container.x,container.width,xPrc/100.0f,rect.width);
+            ::align(rect.y,container.y,container.height,yPrc/100.0f,rect.height);
         }
         void re_measure()
         {
@@ -484,8 +459,8 @@ namespace ExtraRaylib
             if (CheckCollisionPointRec(mouse, rect))
             {
                 isHovering=true;
-                mouseAction=MOUSE_CURSOR_POINTING_HAND;
-                SetMouseCursor(mouseAction);
+                cursorType=MOUSE_CURSOR_POINTING_HAND;
+                SetMouseCursor(cursorType);
                 if(IsMouseButtonPressed(nr))
                     return true;
             }
