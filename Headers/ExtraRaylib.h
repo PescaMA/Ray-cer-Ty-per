@@ -247,7 +247,7 @@ namespace ExtraRaylib
         void bigWord(std::u16string addedWord,float &lineSize)
         {
             float letterSize = MeasureTextUnicode(*font,u"a",font_size,1);
-            int letters = (rect.width - lineSize) / letterSize;
+            unsigned int letters = (rect.width - lineSize) / letterSize;
             sepText.back() += addedWord.substr(0,letters);
             addedWord.erase(0,letters);
             while(!addedWord.empty())
