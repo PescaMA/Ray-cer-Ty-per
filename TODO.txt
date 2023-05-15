@@ -2,4 +2,3 @@
 
 Features (semi bugs):
 - check for character majority;
-- when closing don't go to next clipboard line.

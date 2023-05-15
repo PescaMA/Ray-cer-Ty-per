@@ -68,7 +68,6 @@ namespace RayJump
             );
             EndDrawing();
 
-
             myFont = LoadFontEx("liberation_mono.ttf", 24, NULL, 9000);
             SetTextureFilter(myFont.texture, TEXTURE_FILTER_BILINEAR);
             SetExitKey(0);
@@ -95,7 +94,6 @@ namespace RayJump
             settings["Car2G"] = 0;
             settings["Car2B"] = 250;
 
-
             ScreenInfo = {0,0,(float)settings["ScreenWidth"],(float)settings["ScreenHeight"]};
         }
         static void updateSettings(float wpm,int textLength)
@@ -106,7 +104,6 @@ namespace RayJump
             if(wpm > settings["BestWPM"])
                 settings["BestWPM"] = wpm;
             settings["AverageWPM"] = (wpm + settings["AverageWPM"] * (settings["GamesPlayed"]-1)) / settings["GamesPlayed"];
-
 
         }
         void readSettings()
@@ -172,7 +169,7 @@ namespace RayJump
         void changeName()
         {
             if(id < (int)carNamesEN.size())
-                name = currentLanguage==COUNTRY_TEXT.begin()?&(carNamesEN[id]):&(carNamesRO[id]);///currentLanguage->first;
+                name = currentLanguage==COUNTRY_TEXT.begin()?&(carNamesEN[id]):&(carNamesRO[id]);
             else
                 name = new std::string("Random car");
         }
@@ -359,7 +356,7 @@ namespace RayJump
             eraseChr();
             if(startTime == 0 && correctCount !=0)
                 startTime = getTimeMS();
-            if(linePos == sepTextSize - 1 && bl.empty() && re.empty())
+            if(isAtEnd())
             {
                 if(IsKeyDown(KEY_ENTER))
                     finished = true;
@@ -370,7 +367,7 @@ namespace RayJump
         void calculate()
         {
             if (!startTime || stop2) return;
-            if(linePos == sepTextSize - 1 && bl.empty() && re.empty())
+            if(isAtEnd())
                 stop2 = true; /// last calculation.
             if(secondPassed == getTime()/1000 && !stop2)
                 return;
@@ -442,25 +439,20 @@ namespace RayJump
         }
         void draw()
         {
-            if(text.size() == 0)
-                return;
-            Rectangle newRect = rect;
-            newRect.y *= pixel;
-
-            newRect.width *= pixel;
-            newRect.height *= pixel;
+            if(text.size() == 0 || sepTextSize==0) return;
             int oldFontSize = font_size;
+            Rectangle oldRect = rect;
             font_size*=pixel;
-            float oldRectY = rect.y;
             rect.y *= pixel;
-            DrawRectangleRec(newRect,YELLOW);
-            if(sepTextSize == 0)
-                setSepText();
+            rect.width *= pixel;
+            rect.height *= pixel;
+
+            DrawRectangleRec(rect,YELLOW);
             drawDominantLine();
             for(int i=1;i<MAX_LINES && i+linePos < sepTextSize;i++)
             ExtraRaylib::drawtextUnicode(*font, sepText[i+linePos],{rect.x,rect.y + font_size*i},font_size,1,BLACK,BLANK);
             font_size = oldFontSize;
-            rect.y =oldRectY;
+            rect =oldRect;
         }
     };
     class savedText
@@ -483,7 +475,6 @@ namespace RayJump
             std::string copiedText;
             ignoreLines(fin,settings["CopiedTextPos"]-1);
             getline(fin,copiedText);
-            settings["CopiedTextPos"]++;
             if(copiedText.empty())
                 return u"Empty line.";
             return utf8_to_u16(copiedText);
@@ -607,9 +598,16 @@ namespace RayJump
                     fText.restart();
                 if(fText.finished && (IsKeyPressed(KEY_ESCAPE) ||
                 ((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))))
-                {
+                {/// checks for exit command: 1)shift/ctrl + ENTER or 2)ESC
                     Loader::updateSettings(fText.wpm,fText.getTextSize());
+                    std::cout << (savedText::getText() == utf8_to_u16(fText.getText())) << " A ";
                     roads.updateCarWPM();
+                    if(settings["CopiedTextPos"] > -1 && savedText::getText() == utf8_to_u16(fText.getText()))
+                    {
+                        std::cout << "STUFF BE DONE!\n";
+                        settings["CopiedTextPos"]++;
+                    }
+
                     fText.setText(savedText::getText());
                     fText.restart();
                 }
