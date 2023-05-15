@@ -76,12 +76,12 @@ double distSquare(double x1,double y1,double x2,double y2){
     return (x1-x2) * (x1-x2) + (y1-y2) * (y1-y2);
 }
 void align(float &coord,int startCoord,int length,float percent,int textSize){
-        coord=startCoord + length*percent -textSize/2;
-        if(coord + textSize > startCoord + length)
-            coord = startCoord + length - textSize;
-        if(coord<startCoord)
-            coord=startCoord;
-    }
+    coord=startCoord + length*percent -textSize/2;
+    if(coord + textSize > startCoord + length)
+        coord = startCoord + length - textSize;
+    if(coord<startCoord)
+        coord=startCoord;
+}
 long long getTimeMS(){
     using namespace std::chrono;
     return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
@@ -219,6 +219,7 @@ namespace ExtraRaylib
         {
             int sz = text.size();
             if(!sz) return;
+            sepText.clear();
             sepText.emplace_back();
             int pos = 0;
             float lineSize = 0;
@@ -294,6 +295,10 @@ namespace ExtraRaylib
             y = defaultRect.y * pixel;
             len = defaultRect.width * pixel;
             radius = defaultRect.height * pixel;
+            drag();
+        }
+        void drag()
+        {
             int mouseX = GetMouseX();
             int mouseY = GetMouseY();
             if(IsMouseButtonPressed(0))
@@ -382,6 +387,8 @@ namespace ExtraRaylib
         virtual void run(){}
         virtual void draw(){}
     };
+
+
     struct Button
     {
         Font *font;

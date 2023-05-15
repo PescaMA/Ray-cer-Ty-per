@@ -67,3 +67,30 @@
 	<string>
 	<map>
 
+1684130201 source:/home/Matei/Public/code blocks/ray-cer/RayJump/main.cpp
+	<iostream>
+	<fstream>
+	"raylib.h"
+	<map>
+	<random>
+	<chrono>
+	<string.h>
+	<algorithm>
+	"Headers/ExtraRaylib.h"
+	"Headers/TexteHardCoded.h"
+
+1684131382 /home/Matei/Public/code blocks/ray-cer/RayJump/Headers/ExtraRaylib.h
+	<iostream>
+	<fstream>
+	<raylib.h>
+	<map>
+	<chrono>
+	<string.h>
+	<climits>
+	<locale>
+	<codecvt>
+
+1684129522 /home/Matei/Public/code blocks/ray-cer/RayJump/Headers/TexteHardCoded.h
+	<string>
+	<map>
+

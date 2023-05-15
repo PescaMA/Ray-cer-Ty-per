@@ -299,31 +299,53 @@ namespace RayJump
     class FeedbackText : public ExtraRaylib::boxText
     {public:
         int linePos = 0; /// line position in separated text
-        int charPos = 0;
-        float wpm = 0;
-        int accuracy = 10000;
-        int total = 0;
-        std::u16string gr,re,bl;
+        int charPos = 0; /// column position in separted text
+        float wpm = 0;   /// words per minute
+        int accuracy = 10000;/// acurracy * 100 (for 2 decimals)
+        int unsigned total = 0,correctCount=0; /// nr of characters written by player in current text
+        std::u16string gr,re,bl; /// green, red, black substrings
         bool stop = false;
         bool stop2 = false;
         int secondPassed = 0;
         long long startTime = 0;
-        int maxChar,currentChar=0;
         bool finished = false;
+        /*************************************
+        *           Simple functions
+        **************************************/
         FeedbackText():FeedbackText({0,0,0,0},u""){}
         FeedbackText(Rectangle rect,std::u16string text):boxText(text,rect,3,18,&myFont){}
-        void setText(std::u16string text)
-        {
+        void setText(std::u16string text){
             this->text = text;
-            sepText.clear();
             setSepText();
             restart();
         }
+        int getTextSize(){
+            return text.size();
+        }
+        float getPrc(){
+            return 1.0f * correctCount / text.size();
+        }
+        int getTime(){
+            if(startTime == 0)return 0;
+            return std::max(getTimeMS() - startTime,1LL * 1);
+        }
+        bool isAtEnd(){
+            return correctCount == text.size();
+        }
+        const char* getAccuracy(){
+            static std::string str;
+            str = std::to_string(accuracy);
+            str.insert(str.size()-2,".");
+            str += "% acc";
+            return str.c_str();
+        }
+        /*************************************
+        *           Running function
+        **************************************/
         void restart()
         {
             bl = sepText[0];
-            linePos = charPos = currentChar = total = 0;
-            maxChar = text.size();
+            linePos = charPos = correctCount = total = 0;
             stop = stop2 = finished = false;
             gr = re = u"";
             startTime = secondPassed = 0;
@@ -332,13 +354,10 @@ namespace RayJump
         }
         void run()
         {
-            if(finished) return;
-            if(maxChar == 0) maxChar = text.size();
-            if(maxChar == 0)
-                return;
+            if(finished || text.size()==0) return;
             calculate();
             eraseChr();
-            if(startTime == 0 && currentChar !=0)
+            if(startTime == 0 && correctCount !=0)
                 startTime = getTimeMS();
             if(linePos == sepTextSize - 1 && bl.empty() && re.empty())
             {
@@ -348,18 +367,6 @@ namespace RayJump
             }
             handleKeyPress();
         }
-        float getPrc()
-        {
-            return 1.0f * currentChar / maxChar;
-        }
-        int getTime()
-        {
-            if(startTime == 0)return 0;
-            return std::max(getTimeMS() - startTime,1LL * 1);
-        }
-        bool isAtEnd(){
-            return currentChar == maxChar;
-        }
         void calculate()
         {
             if (!startTime || stop2) return;
@@ -368,16 +375,8 @@ namespace RayJump
             if(secondPassed == getTime()/1000 && !stop2)
                 return;
             secondPassed ++ ;
-            wpm = 1.0f*currentChar/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
-            accuracy = 1.0f * currentChar / total * 10000;
-        }
-        const char* getAccuracy()
-        {
-            static std::string str;
-            str = std::to_string(accuracy);
-            str.insert(str.size()-2,".");
-            str += "% acc";
-            return str.c_str();
+            wpm = 1.0f*correctCount/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
+            accuracy = 1.0f * correctCount / total * 10000;
         }
         void handleKeyPress()
         {
@@ -385,12 +384,12 @@ namespace RayJump
             while((c = GetCharPressed()) && !stop)
             {
                 c = flattenUTF16Char(c);
-                if(currentChar == 0 && c != flattenUTF16Char(sepText[linePos][charPos]))
+                if(correctCount == 0 && c != flattenUTF16Char(sepText[linePos][charPos]))
                     continue;
                 if(c == flattenUTF16Char(sepText[linePos][charPos]) && re.empty())
                 {
                     gr+=bl[0];
-                    currentChar++;
+                    correctCount++;
                 }
                 else
                     re+=bl[0];
@@ -429,6 +428,9 @@ namespace RayJump
             charPos--;
             stop = false;
         }
+        /*************************************
+        *           Draw functions
+        **************************************/
         void drawDominantLine()
         {
             if(bl==u"" && !stop && linePos<sepTextSize)
@@ -593,7 +595,7 @@ namespace RayJump
             ExtraRaylib::Button langButton = ExtraRaylib::Button(myFont,currentLanguage->first,300,0,24,BLACK,YELLOW);
             ExtraRaylib::Button help = ExtraRaylib::Button(myFont,"Help",300,0,24,BLACK,YELLOW);
             ExtraRaylib::Button deleteData = ExtraRaylib::Button(myFont,"Erase all data",300,0,24,BLACK,RED);
-            NormalGame():fText({40,230,600,100},u"default text."){
+            NormalGame():fText({40,230,600,10},u"default text."){
                 fText.setText(savedText::getText());
             }
             void run()
@@ -606,7 +608,7 @@ namespace RayJump
                 if(fText.finished && (IsKeyPressed(KEY_ESCAPE) ||
                 ((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))))
                 {
-                    Loader::updateSettings(fText.wpm,fText.maxChar);
+                    Loader::updateSettings(fText.wpm,fText.getTextSize());
                     roads.updateCarWPM();
                     fText.setText(savedText::getText());
                     fText.restart();
@@ -619,7 +621,7 @@ namespace RayJump
                     fText.setText(savedText::getText());
                 }
                 if(!fText.isAtEnd())
-                    roads.setCompletionPrc(fText.getTime(),fText.maxChar);
+                    roads.setCompletionPrc(fText.getTime(),fText.getTextSize());
                 player->xPr=fText.getPrc();
                 player->wpm = fText.wpm;
                 fText.run();
@@ -689,12 +691,12 @@ namespace RayJump
                 DrawRectangleRec(Header,YELLOW);
                 using ExtraRaylib::TxtAligned;
                 std::string personalizedWinMessage;
-                if(fText.wpm > settings["BestWPM"] && fText.wpm < 250 && fText.maxChar > 15)
+                if(fText.wpm > settings["BestWPM"] && fText.wpm < 250 && fText.getTextSize() > 15)
                     personalizedWinMessage = en?"A new record!":"Un nou record!";
                 else
                     personalizedWinMessage = en? "You finished a new race. Good job!" : "Ați terminat o nouă cursă. Felicitări!";
                 TxtAligned winMessage(&myFont,personalizedWinMessage.c_str(),rect,50,10,28*pixel,GREEN,BLANK);
-                TxtAligned characters(&myFont,TextFormat(en?"You just typed %i characters with: ":"Tocmai ați tastat %i de caractere cu:",(int)fText.maxChar),rect,50,30,20*pixel,BLACK,BLANK);
+                TxtAligned characters(&myFont,TextFormat(en?"You just typed %i characters with: ":"Tocmai ați tastat %i de caractere cu:",fText.getTextSize()),rect,50,30,20*pixel,BLACK,BLANK);
                 TxtAligned wpm(&myFont,TextFormat(en?"%i WPM":"%i CuvPeMin",(int)fText.wpm),rect,20,50,24*pixel,BLACK,BLANK);
                 TxtAligned bestWpm(&myFont,TextFormat(en?"%i words per minute in best race":"%i cuvinte pe minute în cea mai bună cursă" ,(int)settings["BestWPM"]),rect,20,60,20*pixel,BLACK,BLANK);
                 TxtAligned accuracy(&myFont,fText.getAccuracy(),rect,80,50,24*pixel,BLACK,BLANK);
