@@ -32,6 +32,7 @@ std::string u16_to_utf8(const std::u16string& u16Str) {
 }
 char16_t flattenUTF16Char(char16_t c){
     /// function converts some diacritics to ASCII
+    if(c < 190) return c; /// first 190 unicode characters don't have diacritics
     static const std::vector<std::u16string> diacritics = {u"aâäàáåãāăą",
     u"AÂÄÀÁÅÃĀĂĄ",
     u"sßšșş",
@@ -394,6 +395,7 @@ namespace ExtraRaylib
         Font *font;
         std::string text;
         Rectangle rect;
+        Rectangle padding = {0,0,0,0};
         struct ColorPair
         {
             Color text,background;
@@ -463,7 +465,12 @@ namespace ExtraRaylib
                 return true;
             }
 
-            if (CheckCollisionPointRec(mouse, rect))
+            if (CheckCollisionPointRec(mouse, {
+            rect.x-padding.x,
+            rect.y-padding.y,
+            rect.width+padding.width+padding.x,
+            rect.height+padding.height+padding.y
+            }))
             {
                 isHovering=true;
                 cursorType=MOUSE_CURSOR_POINTING_HAND;

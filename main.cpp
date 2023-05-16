@@ -8,11 +8,11 @@
 #include <algorithm>/// for remove, erase
 #include "Headers/ExtraRaylib.h"
 #include "Headers/TexteHardCoded.h"
-extern const CountryMap HardcodeRayJump::COUNTRY_TEXT;
-using HardcodeRayJump::COUNTRY_TEXT;
+extern const PromptMap HardcodeRayJump::PROMPTS_BY_LANGUAGE;
+using HardcodeRayJump::PROMPTS_BY_LANGUAGE;
 namespace RayJump
 {
-    CountryMap::const_iterator currentLanguage = COUNTRY_TEXT.begin();
+    PromptMap::const_iterator currentLanguage = PROMPTS_BY_LANGUAGE.begin();
     std::map<std::string,float> settings;
     int const fps = 60;
     Rectangle ScreenInfo; /// used to center
@@ -169,7 +169,7 @@ namespace RayJump
         void changeName()
         {
             if(id < (int)carNamesEN.size())
-                name = currentLanguage==COUNTRY_TEXT.begin()?&(carNamesEN[id]):&(carNamesRO[id]);
+                name = currentLanguage==PROMPTS_BY_LANGUAGE.begin()?&(carNamesEN[id]):&(carNamesRO[id]);
             else
                 name = new std::string("Random car");
         }
@@ -354,8 +354,6 @@ namespace RayJump
             if(finished || text.size()==0) return;
             calculate();
             eraseChr();
-            if(startTime == 0 && correctCount !=0)
-                startTime = getTimeMS();
             if(isAtEnd())
             {
                 if(IsKeyDown(KEY_ENTER))
@@ -366,6 +364,8 @@ namespace RayJump
         }
         void calculate()
         {
+            if(startTime == 0 && correctCount > 0)
+                startTime = getTimeMS();
             if (!startTime || stop2) return;
             if(isAtEnd())
                 stop2 = true; /// last calculation.
@@ -382,7 +382,7 @@ namespace RayJump
             {
                 c = flattenUTF16Char(c);
                 if(correctCount == 0 && c != flattenUTF16Char(sepText[linePos][charPos]))
-                    continue;
+                    continue; ///ignore mistakes before first correct character
                 if(c == flattenUTF16Char(sepText[linePos][charPos]) && re.empty())
                 {
                     gr+=bl[0];
@@ -583,8 +583,8 @@ namespace RayJump
             public:
             Road roads = Road(myFont,3);
             FeedbackText fText;
-            ExtraRaylib::Button langButton = ExtraRaylib::Button(myFont,currentLanguage->first,300,0,24,BLACK,YELLOW);
-            ExtraRaylib::Button help = ExtraRaylib::Button(myFont,"Help",300,0,24,BLACK,YELLOW);
+            ExtraRaylib::Button langButton = ExtraRaylib::Button(myFont,currentLanguage->first,300,0,24,BLACK,DARKGREEN);
+            ExtraRaylib::Button help = ExtraRaylib::Button(myFont,"Help",300,0,24,BLACK,GOLD);
             ExtraRaylib::Button deleteData = ExtraRaylib::Button(myFont,"Erase all data",300,0,24,BLACK,RED);
             NormalGame():fText({40,230,600,10},u"default text."){
                 fText.setText(savedText::getText());
@@ -600,13 +600,9 @@ namespace RayJump
                 ((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))))
                 {/// checks for exit command: 1)shift/ctrl + ENTER or 2)ESC
                     Loader::updateSettings(fText.wpm,fText.getTextSize());
-                    std::cout << (savedText::getText() == utf8_to_u16(fText.getText())) << " A ";
                     roads.updateCarWPM();
                     if(settings["CopiedTextPos"] > -1 && savedText::getText() == utf8_to_u16(fText.getText()))
-                    {
-                        std::cout << "STUFF BE DONE!\n";
                         settings["CopiedTextPos"]++;
-                    }
 
                     fText.setText(savedText::getText());
                     fText.restart();
@@ -634,20 +630,34 @@ namespace RayJump
             void runButtons()
             {
                 langButton.align(100,0,ScreenInfo);
+                if(langButton.isHovering)
+                {
+                    if(std::next(currentLanguage) != PROMPTS_BY_LANGUAGE.end())
+                        langButton.text = std::next(currentLanguage)->first;
+                    else
+                        langButton.text = PROMPTS_BY_LANGUAGE.begin()->first;
+                }
+                else
+                    langButton.text = currentLanguage->first;
+                float dimDiff=std::max(0.0f,MeasureTextEx(myFont,currentLanguage->first.c_str(),24,1).x - MeasureTextEx(myFont,langButton.text.c_str(),24,1).x);
+                langButton.re_measure();
+                langButton.align(100,0,ScreenInfo);
+                langButton.padding.x=dimDiff;
                 if(langButton.Lclicked())
                 {
                     currentLanguage++;
-                    if(currentLanguage == COUNTRY_TEXT.end())
-                        currentLanguage = COUNTRY_TEXT.begin();
+                    if(currentLanguage == PROMPTS_BY_LANGUAGE.end())
+                        currentLanguage = PROMPTS_BY_LANGUAGE.begin();
                     langButton.text = currentLanguage->first;
                     help.text = currentLanguage->first == "english" ?"Help":"Ajutor";
-                    deleteData.text = currentLanguage==COUNTRY_TEXT.begin()?"Erase all data":"Șterge toate datele";
+                    deleteData.text = currentLanguage==PROMPTS_BY_LANGUAGE.begin()?"Erase all data":"Șterge toate datele";
                     langButton.re_measure();
                     help.re_measure();
                     deleteData.re_measure();
 
                     fText.setText(savedText::getRandomText());
                 }
+
                 help.align(100,100,ScreenInfo);
                 if(help.Lclicked() || IsKeyPressed(KEY_F1))
                     currentScreen.setScreen(ScreenStuff::screens::Shelp);
@@ -720,10 +730,10 @@ namespace RayJump
             void draw()
             {
                 Vector2 pos = {0,0};
-                float pixel = currentLanguage==COUNTRY_TEXT.begin()
+                float pixel = currentLanguage==PROMPTS_BY_LANGUAGE.begin()
                     ?std::min(ScreenInfo.width/700,ScreenInfo.height/400)
                     :std::min(ScreenInfo.width/750,ScreenInfo.height/400);
-                const std::string *str = currentLanguage==COUNTRY_TEXT.begin()? &HardcodeRayJump::HELP_MESSEAGE : &HardcodeRayJump::HELP_MESSEAGE_RO;
+                const std::string *str = currentLanguage==PROMPTS_BY_LANGUAGE.begin()? &HardcodeRayJump::HELP_MESSEAGE : &HardcodeRayJump::HELP_MESSEAGE_RO;
                 DrawTextEx(myFont,(*str).c_str(),pos,13.0f* pixel,1,BLACK);
             }
         }helpScreen;

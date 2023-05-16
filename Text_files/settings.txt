@@ -1,4 +1,4 @@
-AverageWPM 46.0514
+AverageWPM 42.4497
 BestWPM 63.4978
 Car1B 0
 Car1G 250
@@ -7,7 +7,7 @@ Car2B 250
 Car2G 0
 Car2R 0
 CopiedTextPos -1
-GamesPlayed 12
+GamesPlayed 17
 IsWindowMaximized 0
 PlayerB 0
 PlayerG 0

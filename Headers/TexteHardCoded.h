@@ -1,6 +1,6 @@
 #include <string>
 #include <map>
-typedef std::map <std::string,std::vector<std::string>> CountryMap;
+typedef std::map <std::string,std::vector<std::string>> PromptMap;
 namespace HardcodeRayJump
 {
 const std::string HELP_MESSEAGE = R"(Welcome to RayJump (also known as Ray-cer Typer)
@@ -45,7 +45,7 @@ Sfaturi de dactilografiere:
     Tastați cu un ritm lin și constant.
     Exersați dactilografierea în mod regulat pentru a vă îmbunătăți viteza și acuratețea.)";
 
-const CountryMap COUNTRY_TEXT =
+const PromptMap PROMPTS_BY_LANGUAGE =
 {
     {
         "english",{
