@@ -12,10 +12,12 @@ Mechanics:
     Type the first letter to begin a new race.
     Correctly typed characters will turn green, while incorrect ones will turn red.
     The game ends when the player types out all the words in the list and presses Enter.
-    To go back to the game press Esc.
-    Right Click on a car to change its color;
+    Diacritics can be ignored, english characters are enough to type any text.
+
     Press Ctrl + C to copy and Ctrl + V to set your own text.
-    You only need to use the english alphabet even for Romanian diacritics.
+    Press Ctrl + R to reset the text; Ctrl + L to change language.
+    Right Click on a car to change its color;
+    To go back to the game press Esc.
     Hold the escape key to quit the game.
 
 Typing Tips:
@@ -32,11 +34,13 @@ Obiectiv:
 Mecanică:
     Tastați prima literă pentru a începe o nouă cursă.
     Caracterele tastate corect vor deveni verzi, în timp ce cele incorecte vor deveni roșii.
-    Jocul se termină atunci când jucătorul tastează toate cuvintele din listă și apasă Enter.
-    Pentru a vă întoarce la joc apăsați Esc.
-    Faceți clic dreapta pe o mașină pentru a-i schimba culoarea;
-    Apăsați Ctrl + C pentru a copia și Ctrl + V pentru a seta propriul text.
-    Trebuie să folosiți doar alfabetul englezesc, chiar și pentru diacriticele românești.
+    Jocul se termină atunci când jucătorul tastează toate cuvintele și apasă Enter.
+    Diacriticele pot fi ignorate, literele englezești fiind suficiente pentru orice text.
+
+    Apăsați Ctrl + C pentru a copia textul și Ctrl + V pentru a seta propriul text.
+    Apăsați Ctrl + R pentru a reseta textul; Ctrl + L pentru a schimba limba.
+    Faceți clic dreapta pe o mașină pentru a-i schimba culoarea.
+    Pentru a ieși din orice ecran și a vă întoarce la joc apăsați Esc.
     Țineți apăsat pe tasta Escape pentru a ieși din joc.
 
 Sfaturi de dactilografiere:

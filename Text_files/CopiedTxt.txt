@@ -1,7 +1,1 @@
-int main()
-{
-RayJump::Loader loader;
-loader.load();
-RayJump::ScreenManaging::MainLoop::run();
-loader.unload();
-}
+s()

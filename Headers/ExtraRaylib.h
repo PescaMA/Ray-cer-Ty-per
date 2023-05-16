@@ -197,7 +197,7 @@ namespace ExtraRaylib
             ::align(y,container->y,container->height,yPercent,fontSize);
         }
     };
-    class boxText
+    class BoxText
     {
         protected:
         std::u16string text;
@@ -211,8 +211,8 @@ namespace ExtraRaylib
         std::string getText(){
             return u16_to_utf8(text);
         }
-        boxText():MAX_LINES(-1){}
-        boxText(std::u16string text, Rectangle box, int max_nr_lines,int font_size,Font *font)
+        BoxText():MAX_LINES(-1){}
+        BoxText(std::u16string text, Rectangle box, int max_nr_lines,int font_size,Font *font)
         :text(text), rect(box), font_size(std::max(font_size,8)), MAX_LINES(max_nr_lines), font(font){
             rect.height = MAX_LINES * font_size;
         }
@@ -344,17 +344,17 @@ namespace ExtraRaylib
             {defaultRect = {x,y,width,height};}
         void draw()
         {
-            DrawRectangle(x,y,width,height,GRAY);
+            DrawRectangle(x,y,width,height,LIGHTGRAY);
             float left = Sr.x + Sr.len + Sr.radius;
             float right = x + width;
             float center = (left + right)/2;
             float radius = Sr.radius;
             Sr.draw();
-            DrawTextEx(*myFont,"Red",{center - MeasureText("Red",radius)/2,Sr.y - radius * 0.7f},radius * 2,1,BLACK);
+            DrawTextEx(*myFont,"Red",{center - MeasureText("Red",radius)/2,Sr.y - radius * 0.7f},radius * 2,1,RED);
             Sg.draw();
-            DrawTextEx(*myFont,"Green",{center - MeasureText("Green",radius)/2,Sg.y - radius * 0.7f},radius * 2,1,BLACK);
+            DrawTextEx(*myFont,"Green",{center - MeasureText("Green",radius)/2,Sg.y - radius * 0.7f},radius * 2,1,DARKGREEN);
             Sb.draw();
-            DrawTextEx(*myFont,"Blue",{center - MeasureText("Blue",radius)/2,Sb.y - radius * 0.7f},radius * 2,1,BLACK);
+            DrawTextEx(*myFont,"Blue",{center - MeasureText("Blue",radius)/2,Sb.y - radius * 0.7f},radius * 2,1,DARKBLUE);
         }
         void setColor(Color &color)
         {

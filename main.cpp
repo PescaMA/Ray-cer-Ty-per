@@ -293,7 +293,7 @@ namespace RayJump
         }
     };
 
-    class FeedbackText : public ExtraRaylib::boxText
+    class FeedbackText : public ExtraRaylib::BoxText
     {public:
         int linePos = 0; /// line position in separated text
         int charPos = 0; /// column position in separted text
@@ -306,11 +306,9 @@ namespace RayJump
         int secondPassed = 0;
         long long startTime = 0;
 
-        /*************************************
-        *           Simple functions
-        **************************************/
+        ///        Simple functions
         FeedbackText():FeedbackText({0,0,0,0},u""){}
-        FeedbackText(Rectangle rect,std::u16string text):boxText(text,rect,3,18,&myFont){}
+        FeedbackText(Rectangle rect,std::u16string text):BoxText(text,rect,3,18,&myFont){}
         void setText(std::u16string text){
             this->text = text;
             setSepText();
@@ -336,11 +334,8 @@ namespace RayJump
             str += "% acc";
             return str.c_str();
         }
-        /*************************************
-        *           Running function
-        **************************************/
-        void restart()
-        {
+        ///        Running function
+        void restart(){
             bl = sepText[0];
             linePos = charPos = correctCount = total = 0;
             lastCalc = finished = false;
@@ -349,21 +344,16 @@ namespace RayJump
             wpm = 0;
             accuracy = 10000;
         }
-        void run()
-        {
+        void run(){
             if(finished || text.size()==0) return;
             calcStats();
+            handleKeyPress();
             eraseChr();
             if(isAtEnd())
-            {
                 if(IsKeyDown(KEY_ENTER) || IsKeyDown(KEY_ESCAPE))
                     finished = true;
-                return;
-            }
-            handleKeyPress();
         }
-        void calcStats()
-        {
+        void calcStats(){
             if(startTime == 0 && correctCount > 0)
                 startTime = getTimeMS();
             if (!startTime || lastCalc) return;
@@ -377,8 +367,7 @@ namespace RayJump
             wpm = 1.0f*correctCount/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
             accuracy = 1.0f * correctCount / total * 10000;
         }
-        void handleKeyPress()
-        {
+        void handleKeyPress(){
             char16_t c;
             while((c = GetCharPressed()) && !isAtEnd() && !bl.empty())
             {
@@ -406,8 +395,7 @@ namespace RayJump
                     re = gr = u"";
             }
         }
-        void eraseChr()
-        {
+        void eraseChr(){
             if(!IsKeyDown(KEY_BACKSPACE) || re.empty())
                 return;
 
@@ -417,11 +405,8 @@ namespace RayJump
             re.pop_back();
             charPos--;
         }
-        /*************************************
-        *           Draw functions
-        **************************************/
-        void drawDominantLine()
-        {
+        ///        Draw functions
+        void drawDominantLine(){
             if(bl.empty() && re.empty() && linePos < sepTextSize)
                 bl = sepText[linePos];
             Color LIGT_RED = {250, 181, 181, 255};
@@ -430,8 +415,7 @@ namespace RayJump
             drawtextUnicode(*font,re,{rect.x + MeasureTextUnicode(*font,gr,font_size,1),rect.y},font_size,1,BLACK,LIGT_RED);
             drawtextUnicode(*font,bl,{rect.x + MeasureTextUnicode(*font,(gr + re),font_size,1),rect.y},font_size,1,BLACK,BLANK);
         }
-        void draw()
-        {
+        void draw(){
             if(text.size() == 0 || sepTextSize==0) return;
             int oldFontSize = font_size;
             Rectangle oldRect = rect;
@@ -531,7 +515,7 @@ namespace RayJump
     {
         Car *player;
         Car *selectedCar;
-        class ScreenStuff
+        class Screen
         {
             public:
             enum screens{Sgame,SRGBpick,Stitle,Shelp} now = Sgame;
@@ -554,7 +538,7 @@ namespace RayJump
             void run()
             {
                 if(GetKeyPressed() || ExtraRaylib::getSpecialKeyDown())
-                    currentScreen.setScreen(ScreenStuff::screens::Sgame);
+                    currentScreen.setScreen(Screen::screens::Sgame);
             }
             void draw()
             {
@@ -587,10 +571,8 @@ namespace RayJump
             void run()
             {
                 runButtons();
-                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_C))
-                    SetClipboardText(fText.getText().c_str());
-                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
-                    fText.restart();
+                runShortcuts();
+
                 if(fText.finished && (IsKeyPressed(KEY_ESCAPE) ||
                 ((ExtraRaylib::isShiftDown() || ExtraRaylib::isControlDown()) && IsKeyPressed(KEY_ENTER))))
                 {/// checks for exit command: 1)shift/ctrl + ENTER or 2)ESC
@@ -602,15 +584,10 @@ namespace RayJump
                     fText.setText(savedText::getText());
                     fText.restart();
                 }
-                if(fText.finished)
-                    return;
-                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_V))
-                {
-                    savedText::saveClipboardText();
-                    fText.setText(savedText::getText());
-                }
                 if(!fText.isAtEnd())
                     roads.setCompletionPrc(fText.getTime(),fText.getTextSize());
+                if(fText.finished)
+                    return;
                 player->xPr=fText.getPrc();
                 player->wpm = fText.wpm;
                 fText.run();
@@ -619,10 +596,43 @@ namespace RayJump
                 if(nr != -1 && fText.startTime==0)
                 { /// if we selected a car and the race hasn't started we can change their color.
                     selectedCar = &roads.cars[nr];
-                    currentScreen.setScreen(ScreenStuff::screens::SRGBpick);
+                    currentScreen.setScreen(Screen::screens::SRGBpick);
+                }
+            }
+            void runShortcuts()
+            {
+                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_C))
+                    SetClipboardText(fText.getText().c_str());
+                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_R))
+                    fText.restart();
+                if(ExtraRaylib::isControlDown() && IsKeyPressed(KEY_V))
+                {
+                    savedText::saveClipboardText();
+                    fText.setText(savedText::getText());
                 }
             }
             void runButtons()
+            {
+                runLangButton();
+
+                help.align(100,100,ScreenInfo);
+                if(help.Lclicked() || IsKeyPressed(KEY_F1))
+                    currentScreen.setScreen(Screen::screens::Shelp);
+                deleteData.align(0,100,ScreenInfo);
+                if(deleteData.Lclicked())
+                {
+                    Rectangle window = ScreenInfo;
+                    Loader::defaultSettings();
+                    ScreenInfo = window;
+                    settings["ScreenWidth"] = ScreenInfo.width;
+                    settings["ScreenHeight"] = ScreenInfo.height;
+                    Loader::changeSettings();
+                    fText.restart();
+                    roads.updateCarWPM();
+                    roads.loadColors();
+                }
+            }
+            void runLangButton()
             {
                 langButton.align(100,0,ScreenInfo);
                 if(langButton.isHovering)
@@ -638,6 +648,7 @@ namespace RayJump
                 langButton.re_measure();
                 langButton.align(100,0,ScreenInfo);
                 langButton.padding.x=dimDiff;
+
                 if(langButton.Lclicked() || (ExtraRaylib::isControlDown() && IsKeyPressed(KEY_L)))
                 {
                     currentLanguage++;
@@ -653,22 +664,6 @@ namespace RayJump
                     fText.setText(savedText::getRandomText());
                 }
 
-                help.align(100,100,ScreenInfo);
-                if(help.Lclicked() || IsKeyPressed(KEY_F1))
-                    currentScreen.setScreen(ScreenStuff::screens::Shelp);
-                deleteData.align(0,100,ScreenInfo);
-                if(deleteData.Lclicked())
-                {
-                    Rectangle window = ScreenInfo;
-                    Loader::defaultSettings();
-                    ScreenInfo = window;
-                    settings["ScreenWidth"] = ScreenInfo.width;
-                    settings["ScreenHeight"] = ScreenInfo.height;
-                    Loader::changeSettings();
-                    fText.restart();
-                    roads.updateCarWPM();
-                    roads.loadColors();
-                }
             }
             void draw()
             {
@@ -720,14 +715,14 @@ namespace RayJump
             void run()
             {
                 if(IsKeyDown(KEY_ESCAPE) || IsKeyPressed(KEY_F1))
-                    currentScreen.setScreen(ScreenStuff::screens::Sgame);
+                    currentScreen.setScreen(Screen::screens::Sgame);
             }
             void draw()
             {
-                Vector2 pos = {0,0};
+                Vector2 pos = {10,10};
                 float pixel = currentLanguage==PROMPTS_BY_LANGUAGE.begin()
-                    ?std::min(ScreenInfo.width/700,ScreenInfo.height/400)
-                    :std::min(ScreenInfo.width/750,ScreenInfo.height/400);
+                    ?std::min(ScreenInfo.width/680,ScreenInfo.height/430)
+                    :std::min(ScreenInfo.width/700,ScreenInfo.height/430);
                 const std::string *str = currentLanguage==PROMPTS_BY_LANGUAGE.begin()? &HardcodeRayJump::HELP_MESSEAGE : &HardcodeRayJump::HELP_MESSEAGE_RO;
                 DrawTextEx(myFont,(*str).c_str(),pos,13.0f* pixel,1,BLACK);
             }
@@ -735,13 +730,13 @@ namespace RayJump
         class ColorPicker : public ExtraRaylib::ScreenWrapper
         {
             public:
-            ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(myFont,30,250,200,60);
+            ExtraRaylib::Choose_RGB RGBcolor = ExtraRaylib::Choose_RGB(myFont,30,250,220,80);
             void run()
             {
                 RGBcolor.setColor(selectedCar->color);
                 RGBcolor.run(pixel);
                 if(IsKeyDown(KEY_ESCAPE))
-                    currentScreen.setScreen(ScreenStuff::screens::Sgame);
+                    currentScreen.setScreen(Screen::screens::Sgame);
             }
             void draw()
             {
@@ -749,7 +744,7 @@ namespace RayJump
                 RGBcolor.draw();
             }
         } colorPicker;
-        ExtraRaylib::ScreenWrapper* ScreenStuff::getScreen()
+        ExtraRaylib::ScreenWrapper* Screen::getScreen()
         {
             ExtraRaylib::ScreenWrapper *screen = &title;
             if(now == Sgame) screen = game;
@@ -767,7 +762,7 @@ namespace RayJump
                 loadSettings();
                 title.init();
 
-                currentScreen.setScreen(ScreenStuff::screens::Stitle);
+                currentScreen.setScreen(Screen::screens::Stitle);
                 while(!WindowShouldClose())
                 {
                     ExtraRaylib::cursorType = MOUSE_CURSOR_DEFAULT;
