@@ -301,11 +301,11 @@ namespace RayJump
         int accuracy = 10000;/// acurracy * 100 (for 2 decimals)
         int unsigned total = 0,correctCount=0; /// nr of characters written by player in current text
         std::u16string gr,re,bl; /// green, red, black substrings
-        bool stop = false;
-        bool stop2 = false;
+        bool finished = false; /// if ENTER pressed after end is reached
+        bool lastCalc = false;  /// to bypass calculations update time
         int secondPassed = 0;
         long long startTime = 0;
-        bool finished = false;
+
         /*************************************
         *           Simple functions
         **************************************/
@@ -324,7 +324,7 @@ namespace RayJump
         }
         int getTime(){
             if(startTime == 0)return 0;
-            return std::max(getTimeMS() - startTime,1LL * 1);
+            return std::max(getTimeMS() - startTime,1LL);
         }
         bool isAtEnd(){
             return correctCount == text.size();
@@ -343,7 +343,7 @@ namespace RayJump
         {
             bl = sepText[0];
             linePos = charPos = correctCount = total = 0;
-            stop = stop2 = finished = false;
+            lastCalc = finished = false;
             gr = re = u"";
             startTime = secondPassed = 0;
             wpm = 0;
@@ -352,33 +352,35 @@ namespace RayJump
         void run()
         {
             if(finished || text.size()==0) return;
-            calculate();
+            calcStats();
             eraseChr();
             if(isAtEnd())
             {
-                if(IsKeyDown(KEY_ENTER))
+                if(IsKeyDown(KEY_ENTER) || IsKeyDown(KEY_ESCAPE))
                     finished = true;
                 return;
             }
             handleKeyPress();
         }
-        void calculate()
+        void calcStats()
         {
             if(startTime == 0 && correctCount > 0)
                 startTime = getTimeMS();
-            if (!startTime || stop2) return;
+            if (!startTime || lastCalc) return;
             if(isAtEnd())
-                stop2 = true; /// last calculation.
-            if(secondPassed == getTime()/1000 && !stop2)
-                return;
+                lastCalc = true; /// last calculation.
+            if(secondPassed == getTime()/1000 && !lastCalc)
+                return; /// if a full second hasn't passed yet
             secondPassed ++ ;
+
+            /// the actual function:
             wpm = 1.0f*correctCount/5*60/std::max((1.0f*getTime()/1000),(float)1e-10);
             accuracy = 1.0f * correctCount / total * 10000;
         }
         void handleKeyPress()
         {
             char16_t c;
-            while((c = GetCharPressed()) && !stop)
+            while((c = GetCharPressed()) && !isAtEnd() && !bl.empty())
             {
                 c = flattenUTF16Char(c);
                 if(correctCount == 0 && c != flattenUTF16Char(sepText[linePos][charPos]))
@@ -393,23 +395,15 @@ namespace RayJump
                 total ++ ;
                 bl.erase(0,1);
                 charPos++;
-                nextLine();
-            }
-        }
-        void nextLine()
-        {
-            if(!bl.empty())
-                return;
 
-            stop = true;
-            if(!re.empty())
-                return; /// current line has to not have mistakes
-            if(linePos+1 != sepTextSize)
-            {
+                /// for going to next line:
+                if(!bl.empty() || !re.empty())
+                    continue;
                 linePos++;
                 charPos = 0;
-                re = gr = u"";
-                stop = false;
+
+                if(!isAtEnd())
+                    re = gr = u"";
             }
         }
         void eraseChr()
@@ -417,25 +411,24 @@ namespace RayJump
             if(!IsKeyDown(KEY_BACKSPACE) || re.empty())
                 return;
 
-            /// why is temp needed? because c++ said so.
             std::u16string temp;
             temp =re.back();
             bl.insert(0,temp);
             re.pop_back();
             charPos--;
-            stop = false;
         }
         /*************************************
         *           Draw functions
         **************************************/
         void drawDominantLine()
         {
-            if(bl==u"" && !stop && linePos<sepTextSize)
+            if(bl.empty() && re.empty() && linePos < sepTextSize)
                 bl = sepText[linePos];
             Color LIGT_RED = {250, 181, 181, 255};
-            ExtraRaylib::drawtextUnicode(*font,gr,{rect.x,rect.y},font_size,1,GREEN,BLANK);
-            ExtraRaylib::drawtextUnicode(*font,re,{rect.x + ExtraRaylib::MeasureTextUnicode(*font,gr,font_size,1),rect.y},font_size,1,BLACK,LIGT_RED);
-            ExtraRaylib::drawtextUnicode(*font,bl,{rect.x + ExtraRaylib::MeasureTextUnicode(*font,(gr + re),font_size,1),rect.y},font_size,1,BLACK,BLANK);
+            using ExtraRaylib::drawtextUnicode; using ExtraRaylib::MeasureTextUnicode;
+            drawtextUnicode(*font,gr,{rect.x,rect.y},font_size,1,GREEN,BLANK);
+            drawtextUnicode(*font,re,{rect.x + MeasureTextUnicode(*font,gr,font_size,1),rect.y},font_size,1,BLACK,LIGT_RED);
+            drawtextUnicode(*font,bl,{rect.x + MeasureTextUnicode(*font,(gr + re),font_size,1),rect.y},font_size,1,BLACK,BLANK);
         }
         void draw()
         {
@@ -465,7 +458,8 @@ namespace RayJump
             std::ifstream fin("Text_files/CopiedTxt.txt");
             if(!fin)
                 return u"Eroare citire text copiat";
-            int lines = getLineCount(fin);
+
+            int lines = getFileLineCount(fin);
             if(settings["CopiedTextPos"] > lines)
             {
                 settings["CopiedTextPos"] = -1;
@@ -481,7 +475,8 @@ namespace RayJump
         }
         static std::u16string getRandomText()
         {
-            std::string randomTxt = (currentLanguage->second)[rand()%((currentLanguage->second).size())];
+            int randomPosition = rand()%( (currentLanguage->second).size() );
+            std::string randomTxt = (currentLanguage->second)[randomPosition];
             return (utf8_to_u16(randomTxt));
         }
         static void saveClipboardText()
@@ -505,7 +500,7 @@ namespace RayJump
 
             char tok[text.size() + 5]; /// char array for strtok
             strcpy(tok,text.c_str());
-            text.clear();
+            text.clear(); /// empty it so we can refill it
             char *p = strtok(tok,"\n");
             bool firstLine = true;
             while(p)
@@ -515,8 +510,8 @@ namespace RayJump
                 int i;
                 for(i=0;i<n;i++)
                     if(p[i] != ' ')
-                    {
-                        goodFormat = true; /// if line isn't filled with just spaces
+                    {/// we ignore all initial spaces. Also the line can't be only spaces
+                        goodFormat = true;
                         break;
                     }
                 if(goodFormat)
@@ -546,7 +541,7 @@ namespace RayJump
             }
             ExtraRaylib::ScreenWrapper* getScreen();
         }currentScreen;
-        class veryUsefulAndProfessionalTitleScreenWithJustTheName : public ExtraRaylib::ScreenWrapper
+        class SimpleTitle : public ExtraRaylib::ScreenWrapper
         {
             Texture2D img;
             const Rectangle imageRect = {0,0,865,553};
@@ -643,7 +638,7 @@ namespace RayJump
                 langButton.re_measure();
                 langButton.align(100,0,ScreenInfo);
                 langButton.padding.x=dimDiff;
-                if(langButton.Lclicked())
+                if(langButton.Lclicked() || (ExtraRaylib::isControlDown() && IsKeyPressed(KEY_L)))
                 {
                     currentLanguage++;
                     if(currentLanguage == PROMPTS_BY_LANGUAGE.end())

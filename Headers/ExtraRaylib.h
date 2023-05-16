@@ -53,7 +53,7 @@ char16_t flattenUTF16Char(char16_t c){
     return c;
 }
 /// Utility functions:
-int getLineCount(std::ifstream &fin){
+int getFileLineCount(std::ifstream &fin){
     int initPos = fin.tellg();
     fin.seekg(0);
     int lines = 0;
@@ -63,9 +63,9 @@ int getLineCount(std::ifstream &fin){
     fin.seekg(initPos);
     return lines;
 }
-int getLineCount(std::string filePath){
+int getFileLineCount(std::string filePath){
     std::ifstream fin(filePath);
-    int result = getLineCount(fin);
+    int result = getFileLineCount(fin);
     fin.close();
     return result;
 }
@@ -469,8 +469,7 @@ namespace ExtraRaylib
             rect.x-padding.x,
             rect.y-padding.y,
             rect.width+padding.width+padding.x,
-            rect.height+padding.height+padding.y
-            }))
+            rect.height+padding.height+padding.y}))
             {
                 isHovering=true;
                 cursorType=MOUSE_CURSOR_POINTING_HAND;
